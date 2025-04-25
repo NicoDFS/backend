@@ -77,12 +77,32 @@ const typeDefs = gql`
 
   type StakingPool {
     id: ID!
-    tokenAddress: String!
-    rewardTokenAddress: String!
+    address: String!
     totalStaked: String!
     rewardRate: String!
-    startTime: String!
-    endTime: String!
+    rewardsDuration: String!
+    periodFinish: String!
+    lastUpdateTime: String!
+    rewardPerTokenStored: String!
+    paused: Boolean!
+  }
+
+  type StakingUser {
+    id: ID!
+    address: String!
+    stakedAmount: String!
+    rewards: String!
+    lastAction: String!
+    lastActionTimestamp: String!
+  }
+
+  type StakingEvent {
+    id: ID!
+    user: StakingUser!
+    amount: String!
+    timestamp: String!
+    blockNumber: String!
+    transactionHash: String!
   }
 
   type NodeHealth {
@@ -137,6 +157,11 @@ const typeDefs = gql`
     # Staking queries
     stakingPools: [StakingPool!]!
     stakingPool(id: ID!): StakingPool
+    stakingPoolUsers(poolId: ID!, first: Int, skip: Int): [StakingUser!]!
+    userStakingInfo(userAddress: String!, poolId: ID!): StakingUser
+    stakingEvents(poolId: ID!, eventType: String!, first: Int, skip: Int): [StakingEvent!]!
+    stakingContractData: StakingPool
+    userStakingContractData(userAddress: String!): StakingUser
 
     # Monitoring queries
     relayerHealth: NodeHealth!

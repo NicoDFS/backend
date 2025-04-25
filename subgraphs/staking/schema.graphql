@@ -1,0 +1,89 @@
+type StakingPool @entity {
+  id: ID!
+  address: Bytes!
+  totalStaked: BigInt!
+  rewardRate: BigInt!
+  rewardsDuration: BigInt!
+  periodFinish: BigInt!
+  lastUpdateTime: BigInt!
+  rewardPerTokenStored: BigInt!
+  paused: Boolean!
+  users: [User!]! @derivedFrom(field: "pool")
+  stakeEvents: [StakeEvent!]! @derivedFrom(field: "pool")
+  withdrawEvents: [WithdrawEvent!]! @derivedFrom(field: "pool")
+  rewardEvents: [RewardEvent!]! @derivedFrom(field: "pool")
+  rewardAddedEvents: [RewardAddedEvent!]! @derivedFrom(field: "pool")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type User @entity {
+  id: ID!
+  address: Bytes!
+  pool: StakingPool!
+  stakedAmount: BigInt!
+  rewards: BigInt!
+  rewardPerTokenPaid: BigInt!
+  stakeEvents: [StakeEvent!]! @derivedFrom(field: "user")
+  withdrawEvents: [WithdrawEvent!]! @derivedFrom(field: "user")
+  rewardEvents: [RewardEvent!]! @derivedFrom(field: "user")
+  lastAction: String!
+  lastActionTimestamp: BigInt!
+}
+
+type StakeEvent @entity {
+  id: ID!
+  user: User!
+  pool: StakingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type WithdrawEvent @entity {
+  id: ID!
+  user: User!
+  pool: StakingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type RewardEvent @entity {
+  id: ID!
+  user: User!
+  pool: StakingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type RewardAddedEvent @entity {
+  id: ID!
+  pool: StakingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type RewardsDurationUpdatedEvent @entity {
+  id: ID!
+  pool: StakingPool!
+  newDuration: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type PauseEvent @entity {
+  id: ID!
+  pool: StakingPool!
+  paused: Boolean!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}

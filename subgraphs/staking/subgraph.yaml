@@ -1,0 +1,40 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: KalyStaking
+    network: kalychain
+    source:
+      address: "0xF670A2D32a2b25e181B26Abb02614a20eA1eA2D9"
+      abi: KalyStaking
+      startBlock: 20992295
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StakingPool
+        - User
+        - StakeEvent
+        - WithdrawEvent
+        - RewardEvent
+      abis:
+        - name: KalyStaking
+          file: ../../src/blockchain/abis/staking/stakeABI.json
+      eventHandlers:
+        - event: Staked(indexed address,uint256)
+          handler: handleStaked
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+        - event: RewardPaid(indexed address,uint256)
+          handler: handleRewardPaid
+        - event: RewardAdded(uint256)
+          handler: handleRewardAdded
+        - event: RewardsDurationUpdated(indexed uint256)
+          handler: handleRewardsDurationUpdated
+        - event: Paused(address)
+          handler: handlePaused
+        - event: Unpaused(address)
+          handler: handleUnpaused
+      file: ./src/mapping.ts
