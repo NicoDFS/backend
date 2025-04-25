@@ -1,4 +1,4 @@
-type StakingPool @entity {
+type StakingPool @entity(immutable: false) {
   id: ID!
   address: Bytes!
   totalStaked: BigInt!
@@ -17,7 +17,7 @@ type StakingPool @entity {
   updatedAt: BigInt!
 }
 
-type User @entity {
+type User @entity(immutable: false) {
   id: ID!
   address: Bytes!
   pool: StakingPool!
@@ -31,7 +31,7 @@ type User @entity {
   lastActionTimestamp: BigInt!
 }
 
-type StakeEvent @entity {
+type StakeEvent @entity(immutable: true) {
   id: ID!
   user: User!
   pool: StakingPool!
@@ -41,7 +41,7 @@ type StakeEvent @entity {
   transactionHash: Bytes!
 }
 
-type WithdrawEvent @entity {
+type WithdrawEvent @entity(immutable: true) {
   id: ID!
   user: User!
   pool: StakingPool!
@@ -51,7 +51,7 @@ type WithdrawEvent @entity {
   transactionHash: Bytes!
 }
 
-type RewardEvent @entity {
+type RewardEvent @entity(immutable: true) {
   id: ID!
   user: User!
   pool: StakingPool!
@@ -61,7 +61,7 @@ type RewardEvent @entity {
   transactionHash: Bytes!
 }
 
-type RewardAddedEvent @entity {
+type RewardAddedEvent @entity(immutable: true) {
   id: ID!
   pool: StakingPool!
   amount: BigInt!
@@ -70,7 +70,7 @@ type RewardAddedEvent @entity {
   transactionHash: Bytes!
 }
 
-type RewardsDurationUpdatedEvent @entity {
+type RewardsDurationUpdatedEvent @entity(immutable: true) {
   id: ID!
   pool: StakingPool!
   newDuration: BigInt!
@@ -79,7 +79,7 @@ type RewardsDurationUpdatedEvent @entity {
   transactionHash: Bytes!
 }
 
-type PauseEvent @entity {
+type PauseEvent @entity(immutable: true) {
   id: ID!
   pool: StakingPool!
   paused: Boolean!

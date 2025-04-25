@@ -10,6 +10,12 @@
 !.yarn/releases
 !.yarn/versions
 
+# subgraph dependencies
+/subgraphs/*/node_modules
+/subgraphs/*/generated
+/subgraphs/*/build
+/subgraphs/data
+
 # testing
 /coverage
 
