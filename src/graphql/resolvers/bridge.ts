@@ -7,6 +7,15 @@ export const bridgeResolvers = {
     },
     bridge: async (_: any, { id }: { id: string }, { bridgeService }: Context) => {
       return bridgeService.getBridge(id);
+    },
+    bridgeStats: async (_: any, __: any, { bridgeService }: Context) => {
+      return bridgeService.getBridgeStats();
+    },
+    warpRoutes: async (_: any, __: any, { bridgeService }: Context) => {
+      return bridgeService.getWarpRoutes();
+    },
+    bridgeOverview: async (_: any, __: any, { bridgeService }: Context) => {
+      return bridgeService.getBridgeOverview();
     }
   }
 };

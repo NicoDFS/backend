@@ -12,11 +12,13 @@
     "@graphql-tools/schema": "^10.0.23",
     "apollo-server-core": "^3.13.0",
     "apollo-server-micro": "^3.13.0",
+    "axios": "^1.9.0",
     "ethers": "^5.7.2",
     "graphql": "^16.10.0",
     "graphql-request": "^7.1.2",
     "micro-cors": "^0.1.1",
     "next": "15.3.1",
+    "nodemailer": "^6.10.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
