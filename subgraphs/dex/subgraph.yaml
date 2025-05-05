@@ -48,6 +48,8 @@ dataSources:
       abis:
         - name: KswapToken
           file: ../../src/blockchain/abis/dex/kswapABI.json
+        - name: ERC20
+          file: ../../src/blockchain/abis/dex/erc20ABI.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleKswapTransfer
