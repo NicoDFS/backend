@@ -91,7 +91,7 @@ The project uses subgraphs to index blockchain data. We've set up a local Graph 
 
 4. Check the indexing status:
    ```bash
-   curl -X POST http://localhost:8030/graphql -H "Content-Type: application/json" -d '{"query": "{ indexingStatusForCurrentVersion(subgraphName: \"kalyswap/staking-subgraph\") { synced health chains { network latestBlock { number } chainHeadBlock { number } } } }"}'
+   curl -X POST http://localhost:8030/graphql -H "Content-Type: application/json" -d '{"query": "{ indexingStatusForCurrentVersion(subgraphName: \"kalyswap/dex-subgraph\") { synced health chains { network latestBlock { number } chainHeadBlock { number } } } }"}'
    ```
 
 #### Staking Subgraph

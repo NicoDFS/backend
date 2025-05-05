@@ -1,14 +1,32 @@
 import { BigInt, Address, ethereum } from '@graphprotocol/graph-ts';
 import { KswapToken, Transfer, Approval } from '../generated/KswapToken/KswapToken';
-import { Token, TransferEvent, ApprovalEvent } from '../generated/schema';
-import { ZERO_BI, ONE_BI, fetchTokenSymbol, fetchTokenName, fetchTokenDecimals, fetchTokenTotalSupply } from './helpers';
+import { Token, TransferEvent, ApprovalEvent, Factory } from '../generated/schema';
+import { ZERO_BI, ONE_BI, fetchTokenSymbol, fetchTokenName, fetchTokenDecimals, fetchTokenTotalSupply, FACTORY_ADDRESS } from './helpers';
 
 // Handle Transfer event for KSWAP token
 export function handleKswapTransfer(event: Transfer): void {
+  // Load the factory
+  let factory = Factory.load(FACTORY_ADDRESS);
+  if (factory === null) {
+    // Create a new factory if it doesn't exist yet
+    factory = new Factory(FACTORY_ADDRESS);
+    factory.address = Address.fromString(FACTORY_ADDRESS);
+    factory.pairCount = 0;
+    factory.totalVolumeUSD = ZERO_BI.toBigDecimal();
+    factory.totalVolumeKLC = ZERO_BI.toBigDecimal();
+    factory.totalLiquidityUSD = ZERO_BI.toBigDecimal();
+    factory.totalLiquidityKLC = ZERO_BI.toBigDecimal();
+    factory.txCount = ZERO_BI;
+    factory.createdAt = event.block.timestamp;
+    factory.updatedAt = event.block.timestamp;
+    factory.save();
+  }
+
   // Load or create the token
   let token = Token.load(event.address.toHexString());
   if (token === null) {
     token = new Token(event.address.toHexString());
+    token.factory = factory.id;
     token.address = event.address;
     token.symbol = fetchTokenSymbol(event.address);
     token.name = fetchTokenName(event.address);
@@ -46,10 +64,28 @@ export function handleKswapTransfer(event: Transfer): void {
 
 // Handle Approval event for KSWAP token
 export function handleKswapApproval(event: Approval): void {
+  // Load the factory
+  let factory = Factory.load(FACTORY_ADDRESS);
+  if (factory === null) {
+    // Create a new factory if it doesn't exist yet
+    factory = new Factory(FACTORY_ADDRESS);
+    factory.address = Address.fromString(FACTORY_ADDRESS);
+    factory.pairCount = 0;
+    factory.totalVolumeUSD = ZERO_BI.toBigDecimal();
+    factory.totalVolumeKLC = ZERO_BI.toBigDecimal();
+    factory.totalLiquidityUSD = ZERO_BI.toBigDecimal();
+    factory.totalLiquidityKLC = ZERO_BI.toBigDecimal();
+    factory.txCount = ZERO_BI;
+    factory.createdAt = event.block.timestamp;
+    factory.updatedAt = event.block.timestamp;
+    factory.save();
+  }
+
   // Load or create the token
   let token = Token.load(event.address.toHexString());
   if (token === null) {
     token = new Token(event.address.toHexString());
+    token.factory = factory.id;
     token.address = event.address;
     token.symbol = fetchTokenSymbol(event.address);
     token.name = fetchTokenName(event.address);
