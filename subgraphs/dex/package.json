@@ -1,0 +1,16 @@
+{
+  "name": "kalyswap-dex-subgraph",
+  "version": "0.1.0",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 kalyswap/dex-subgraph",
+    "create-local": "graph create --node http://localhost:8020/ kalyswap/dex-subgraph",
+    "remove-local": "graph remove --node http://localhost:8020/ kalyswap/dex-subgraph",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 kalyswap/dex-subgraph"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "0.97.0",
+    "@graphprotocol/graph-ts": "0.38.0"
+  }
+}

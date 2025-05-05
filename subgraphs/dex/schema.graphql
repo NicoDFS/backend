@@ -1,0 +1,325 @@
+type Factory @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  pairCount: Int!
+  totalVolumeUSD: BigDecimal!
+  totalVolumeKLC: BigDecimal!
+  totalLiquidityUSD: BigDecimal!
+  totalLiquidityKLC: BigDecimal!
+  txCount: BigInt!
+  pairs: [Pair!]! @derivedFrom(field: "factory")
+  tokens: [Token!]! @derivedFrom(field: "factory")
+  feeTo: Bytes
+  feeToSetter: Bytes
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type Token @entity(immutable: false) {
+  id: ID!
+  factory: Factory!
+  address: Bytes!
+  symbol: String!
+  name: String!
+  decimals: Int!
+  totalSupply: BigInt!
+  tradeVolume: BigDecimal!
+  tradeVolumeUSD: BigDecimal!
+  untrackedVolumeUSD: BigDecimal!
+  txCount: BigInt!
+  totalLiquidity: BigDecimal!
+  derivedKLC: BigDecimal!
+  pairs: [PairToken!]! @derivedFrom(field: "token")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type Pair @entity(immutable: false) {
+  id: ID!
+  factory: Factory!
+  address: Bytes!
+  token0: Token!
+  token1: Token!
+  reserve0: BigDecimal!
+  reserve1: BigDecimal!
+  totalSupply: BigDecimal!
+  reserveKLC: BigDecimal!
+  reserveUSD: BigDecimal!
+  trackedReserveKLC: BigDecimal!
+  token0Price: BigDecimal!
+  token1Price: BigDecimal!
+  volumeToken0: BigDecimal!
+  volumeToken1: BigDecimal!
+  volumeUSD: BigDecimal!
+  untrackedVolumeUSD: BigDecimal!
+  txCount: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  swaps: [Swap!]! @derivedFrom(field: "pair")
+  mints: [Mint!]! @derivedFrom(field: "pair")
+  burns: [Burn!]! @derivedFrom(field: "pair")
+  tokens: [PairToken!]! @derivedFrom(field: "pair")
+}
+
+type PairToken @entity(immutable: false) {
+  id: ID!
+  pair: Pair!
+  token: Token!
+  isToken0: Boolean!
+}
+
+type Swap @entity(immutable: true) {
+  id: ID!
+  pair: Pair!
+  sender: Bytes!
+  amount0In: BigDecimal!
+  amount1In: BigDecimal!
+  amount0Out: BigDecimal!
+  amount1Out: BigDecimal!
+  to: Bytes!
+  logIndex: BigInt!
+  amountUSD: BigDecimal!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type Mint @entity(immutable: true) {
+  id: ID!
+  pair: Pair!
+  sender: Bytes!
+  owner: Bytes!
+  amount0: BigDecimal!
+  amount1: BigDecimal!
+  amountUSD: BigDecimal!
+  logIndex: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type Burn @entity(immutable: true) {
+  id: ID!
+  pair: Pair!
+  sender: Bytes!
+  owner: Bytes!
+  amount0: BigDecimal!
+  amount1: BigDecimal!
+  amountUSD: BigDecimal!
+  logIndex: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type PairCreatedEvent @entity(immutable: true) {
+  id: ID!
+  factory: Factory!
+  token0: Token!
+  token1: Token!
+  pair: Pair!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type SyncEvent @entity(immutable: true) {
+  id: ID!
+  pair: Pair!
+  reserve0: BigInt!
+  reserve1: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type DayData @entity(immutable: false) {
+  id: ID!
+  date: Int!
+  factory: Factory!
+  volumeKLC: BigDecimal!
+  volumeUSD: BigDecimal!
+  untrackedVolume: BigDecimal!
+  liquidityKLC: BigDecimal!
+  liquidityUSD: BigDecimal!
+  txCount: BigInt!
+}
+
+type PairDayData @entity(immutable: false) {
+  id: ID!
+  date: Int!
+  pair: Pair!
+  token0: Token!
+  token1: Token!
+  reserve0: BigDecimal!
+  reserve1: BigDecimal!
+  totalSupply: BigDecimal!
+  reserveUSD: BigDecimal!
+  volumeToken0: BigDecimal!
+  volumeToken1: BigDecimal!
+  volumeUSD: BigDecimal!
+  txCount: BigInt!
+}
+
+type TokenDayData @entity(immutable: false) {
+  id: ID!
+  date: Int!
+  token: Token!
+  volume: BigDecimal!
+  volumeKLC: BigDecimal!
+  volumeUSD: BigDecimal!
+  txCount: BigInt!
+  liquidityKLC: BigDecimal!
+  liquidityUSD: BigDecimal!
+  priceUSD: BigDecimal!
+}
+
+# Token events
+type TransferEvent @entity(immutable: true) {
+  id: ID!
+  token: Token!
+  from: Bytes!
+  to: Bytes!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type ApprovalEvent @entity(immutable: true) {
+  id: ID!
+  token: Token!
+  owner: Bytes!
+  spender: Bytes!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# StakingRewards entities
+type StakingPool @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  stakingToken: Token!
+  rewardsToken: Token!
+  totalStaked: BigInt!
+  rewardRate: BigInt!
+  rewardsDuration: BigInt!
+  periodFinish: BigInt!
+  lastUpdateTime: BigInt!
+  rewardPerTokenStored: BigInt!
+  stakers: [Staker!]! @derivedFrom(field: "pool")
+  stakeEvents: [StakeEvent!]! @derivedFrom(field: "pool")
+  withdrawEvents: [WithdrawEvent!]! @derivedFrom(field: "pool")
+  rewardEvents: [RewardEvent!]! @derivedFrom(field: "pool")
+  rewardAddedEvents: [RewardAddedEvent!]! @derivedFrom(field: "pool")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type Staker @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  pool: StakingPool!
+  stakedAmount: BigInt!
+  rewards: BigInt!
+  rewardPerTokenPaid: BigInt!
+  stakeEvents: [StakeEvent!]! @derivedFrom(field: "staker")
+  withdrawEvents: [WithdrawEvent!]! @derivedFrom(field: "staker")
+  rewardEvents: [RewardEvent!]! @derivedFrom(field: "staker")
+  lastAction: String!
+  lastActionTimestamp: BigInt!
+}
+
+type StakeEvent @entity(immutable: true) {
+  id: ID!
+  staker: Staker!
+  pool: StakingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type WithdrawEvent @entity(immutable: true) {
+  id: ID!
+  staker: Staker!
+  pool: StakingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type RewardEvent @entity(immutable: true) {
+  id: ID!
+  staker: Staker!
+  pool: StakingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type RewardAddedEvent @entity(immutable: true) {
+  id: ID!
+  pool: StakingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# LiquidityPoolManager entities
+type LiquidityPoolManager @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  wklc: Bytes!
+  kswap: Bytes!
+  treasuryVester: Bytes!
+  klcKswapPair: Bytes!
+  klcSplit: BigInt!
+  kswapSplit: BigInt!
+  splitPools: Boolean!
+  whitelistedPools: [WhitelistedPool!]! @derivedFrom(field: "manager")
+  unallocatedKswap: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type WhitelistedPool @entity(immutable: false) {
+  id: ID!
+  manager: LiquidityPoolManager!
+  pair: Pair!
+  weight: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+# TreasuryVester entities
+type TreasuryVester @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  kswap: Bytes!
+  recipient: Bytes!
+  vestingAmount: BigInt!
+  vestingBegin: BigInt!
+  vestingCliff: BigInt!
+  vestingEnd: BigInt!
+  lastUpdate: BigInt!
+  vestingEnabled: Boolean!
+  tokensVestedEvents: [TokensVestedEvent!]! @derivedFrom(field: "vester")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type TokensVestedEvent @entity(immutable: true) {
+  id: ID!
+  vester: TreasuryVester!
+  amount: BigInt!
+  recipient: Bytes!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
