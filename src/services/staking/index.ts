@@ -21,8 +21,8 @@ const MOCK_STAKING_POOLS = [
   }
 ];
 
-// Use mock data for testing, will be replaced with actual subgraph data later
-const USE_MOCK_DATA = true;
+// Use real data from the subgraph
+const USE_MOCK_DATA = false;
 
 const stakingClient = getGraphQLClient('staking');
 

@@ -159,7 +159,9 @@ const typeDefs = gql`
     stakingPool(id: ID!): StakingPool
     stakingPoolUsers(poolId: ID!, first: Int, skip: Int): [StakingUser!]!
     userStakingInfo(userAddress: String!, poolId: ID!): StakingUser
-    stakingEvents(poolId: ID!, eventType: String!, first: Int, skip: Int): [StakingEvent!]!
+    stakeEvents(poolId: ID, first: Int, skip: Int): [StakingEvent!]!
+    withdrawEvents(poolId: ID, first: Int, skip: Int): [StakingEvent!]!
+    rewardEvents(poolId: ID, first: Int, skip: Int): [StakingEvent!]!
     stakingContractData: StakingPool
     userStakingContractData(userAddress: String!): StakingUser
 

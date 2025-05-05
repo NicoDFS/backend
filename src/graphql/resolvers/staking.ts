@@ -26,12 +26,28 @@ export const stakingResolvers = {
       return stakingService.getUserStakingInfo(userAddress, poolId);
     },
 
-    stakingEvents: async (
+    stakeEvents: async (
       _: any,
-      { poolId, eventType, first, skip }: { poolId: string; eventType: string; first?: number; skip?: number },
+      { poolId, first, skip }: { poolId?: string; first?: number; skip?: number },
       { stakingService }: Context
     ) => {
-      return stakingService.getStakingEvents(poolId, eventType, first, skip);
+      return stakingService.getStakingEvents(poolId, 'stake', first, skip);
+    },
+
+    withdrawEvents: async (
+      _: any,
+      { poolId, first, skip }: { poolId?: string; first?: number; skip?: number },
+      { stakingService }: Context
+    ) => {
+      return stakingService.getStakingEvents(poolId, 'withdraw', first, skip);
+    },
+
+    rewardEvents: async (
+      _: any,
+      { poolId, first, skip }: { poolId?: string; first?: number; skip?: number },
+      { stakingService }: Context
+    ) => {
+      return stakingService.getStakingEvents(poolId, 'reward', first, skip);
     },
 
     stakingContractData: async (_: any, __: any, { stakingService }: Context) => {
