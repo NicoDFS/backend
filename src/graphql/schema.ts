@@ -12,6 +12,16 @@ const typeDefs = gql`
     symbol: String!
     name: String!
     decimals: Int!
+    tradeVolume: String
+    tradeVolumeUSD: String
+    totalLiquidity: String
+    derivedKLC: String
+    pairs: [PairToken]
+  }
+
+  type PairToken {
+    pair: Pair!
+    isToken0: Boolean
   }
 
   type Pair {
@@ -20,7 +30,123 @@ const typeDefs = gql`
     token1: Token!
     reserve0: String!
     reserve1: String!
+    reserveUSD: String
     volumeUSD: String
+    token0Price: String
+    token1Price: String
+    txCount: String
+    createdAt: String
+    mints: [Mint]
+    burns: [Burn]
+    swaps: [Swap]
+  }
+
+  type Mint {
+    id: ID!
+    sender: String!
+    amount0: String!
+    amount1: String!
+    amountUSD: String
+    timestamp: String!
+    transactionHash: String!
+  }
+
+  type Burn {
+    id: ID!
+    sender: String!
+    amount0: String!
+    amount1: String!
+    amountUSD: String
+    timestamp: String!
+    transactionHash: String!
+  }
+
+  type Swap {
+    id: ID!
+    sender: String!
+    amount0In: String!
+    amount1In: String!
+    amount0Out: String!
+    amount1Out: String!
+    amountUSD: String
+    timestamp: String!
+    transactionHash: String!
+  }
+
+  type Factory {
+    id: ID!
+    address: String!
+    pairCount: Int!
+    totalVolumeUSD: String!
+    totalVolumeKLC: String!
+    totalLiquidityUSD: String!
+    totalLiquidityKLC: String!
+    txCount: String!
+    feeTo: String
+    feeToSetter: String
+  }
+
+  type DayData {
+    id: ID!
+    date: Int!
+    volumeUSD: String!
+    volumeKLC: String!
+    liquidityUSD: String!
+    liquidityKLC: String!
+    txCount: String!
+  }
+
+  type LiquidityPoolManager {
+    id: ID!
+    address: String!
+    wklc: String!
+    kswap: String!
+    treasuryVester: String!
+    klcKswapPair: String!
+    klcSplit: String!
+    kswapSplit: String!
+    splitPools: Boolean!
+    unallocatedKswap: String!
+    whitelistedPools: [WhitelistedPool]
+  }
+
+  type WhitelistedPool {
+    id: ID!
+    pair: String!
+    weight: String!
+    manager: LiquidityPoolManager
+  }
+
+  type TreasuryVester {
+    id: ID!
+    address: String!
+    recipient: String!
+    kswap: String!
+    vestingAmount: String!
+    vestingBegin: String!
+    vestingCliff: String!
+    vestingEnd: String!
+    lastUpdate: String!
+    enabled: Boolean!
+  }
+
+  type DexStakingPool {
+    id: ID!
+    address: String!
+    stakingToken: Token!
+    rewardsToken: Token!
+    totalStaked: String!
+    rewardRate: String!
+    rewardsDuration: String!
+    periodFinish: String!
+    lastUpdateTime: String!
+    rewardPerTokenStored: String!
+  }
+
+  type DexOverview {
+    factory: Factory
+    dayData: DayData
+    topPairs: [Pair]
   }
 
   type Bridge {
@@ -140,8 +266,17 @@ const typeDefs = gql`
 
   type Query {
     # DEX queries
-    pairs: [Pair!]!
+    dexOverview: DexOverview
+    factory: Factory
+    pairs(first: Int, skip: Int, orderBy: String, orderDirection: String): [Pair!]!
     pair(id: ID!): Pair
+    tokens(first: Int, skip: Int, orderBy: String, orderDirection: String): [Token!]!
+    token(id: ID!): Token
+    liquidityPoolManager: LiquidityPoolManager
+    whitelistedPools: [WhitelistedPool!]!
+    treasuryVester: TreasuryVester
+    dexStakingPool: DexStakingPool
+    dexDayData(first: Int, skip: Int): [DayData!]!
 
     # Bridge queries
     bridges: [Bridge!]!
