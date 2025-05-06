@@ -36,6 +36,10 @@ function getOrCreateNativeToken(tokenAddress: Bytes): Token {
       token.name = "Ethereum";
       token.symbol = "ETH";
       token.decimals = 18;
+    } else if (tokenAddress.toHexString() == "0x9c3c9283d3e44854697cd22d3faa240cfb032889") {
+      token.name = "Polygon";
+      token.symbol = "POL";
+      token.decimals = 18;
     } else {
       token.name = "Unknown Native Token";
       token.symbol = "???";

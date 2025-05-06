@@ -1,11 +1,13 @@
 import { gql } from 'graphql-request';
 import { getGraphQLClient } from '../graphql-client';
+import axios from 'axios';
 
 // Use the bridge subgraph client
 const bridgeClient = getGraphQLClient('bridge');
 
 // Map of chain IDs to names
 const chainIdToName: Record<string, string> = {
+  '0': 'unknown',
   '1': 'ethereum',
   '56': 'bsc',
   '137': 'polygon',
@@ -33,9 +35,129 @@ const tokenAddressToInfo: Record<string, { symbol: string, name: string, decimal
   // Add more tokens as needed
 };
 
+// Map of token symbols to CoinGecko IDs
+const tokenToCoinGeckoId: Record<string, string> = {
+  'KLC': 'kalychain',
+  'ETH': 'ethereum',
+  'BNB': 'binancecoin',
+  'POL': 'polygon',
+  'WBTC': 'wrapped-bitcoin',
+  'USDC': 'usd-coin',
+  'USDT': 'tether',
+  'DAI': 'dai'
+};
+
+// Cache for token prices (to avoid too many API calls)
+let tokenPriceCache: Record<string, number> = {};
+let lastPriceFetch = 0;
+const PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Helper function to get token prices
+const getTokenPrices = async (): Promise<Record<string, number>> => {
+  const now = Date.now();
+
+  // Return cached prices if they're still fresh
+  if (Object.keys(tokenPriceCache).length > 0 && now - lastPriceFetch < PRICE_CACHE_TTL) {
+    console.log('Using cached token prices:', tokenPriceCache);
+    return tokenPriceCache;
+  }
+
+  try {
+    // For now, use fallback prices to avoid rate limiting issues
+    // We'll implement proper API calls in production
+    console.log('Using fallback token prices due to CoinGecko API rate limits');
+
+    const fallbackPrices = {
+      'KLC': 0.1,
+      'ETH': 3000,
+      'BNB': 500,
+      'POL': 0.5,
+      'WBTC': 60000,
+      'USDC': 1,
+      'USDT': 1,
+      'DAI': 1
+    };
+
+    // Update cache
+    tokenPriceCache = fallbackPrices;
+    lastPriceFetch = now;
+
+    return fallbackPrices;
+
+    /* Commented out for now to avoid rate limiting
+    // Get list of token IDs to fetch
+    const tokenIds = Object.values(tokenToCoinGeckoId).join(',');
+    console.log('Fetching prices for tokens:', tokenIds);
+
+    // Fetch prices from CoinGecko
+    const response = await axios.get(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${tokenIds}&vs_currencies=usd`
+    );
+
+    console.log('CoinGecko API response:', response.data);
+
+    // Process response into a simpler format
+    const prices: Record<string, number> = {};
+
+    // Map CoinGecko IDs back to our token symbols
+    for (const [symbol, geckoId] of Object.entries(tokenToCoinGeckoId)) {
+      if (response.data[geckoId]) {
+        prices[symbol] = response.data[geckoId].usd;
+      }
+    }
+
+    // Add stablecoins with fixed prices
+    if (!prices['USDC']) prices['USDC'] = 1;
+    if (!prices['USDT']) prices['USDT'] = 1;
+    if (!prices['DAI']) prices['DAI'] = 1;
+
+    console.log('Processed token prices:', prices);
+
+    // Update cache
+    tokenPriceCache = prices;
+    lastPriceFetch = now;
+
+    return prices;
+    */
+  } catch (error: any) {
+    console.error('Error fetching token prices:', error);
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+    }
+
+    // Return last cached prices if available, or fallback prices
+    if (Object.keys(tokenPriceCache).length > 0) {
+      console.log('Using cached token prices after error:', tokenPriceCache);
+      return tokenPriceCache;
+    }
+
+    // Fallback prices if API call fails
+    console.log('Using fallback token prices after error');
+    const fallbackPrices = {
+      'KLC': 0.1,
+      'ETH': 3000,
+      'BNB': 500,
+      'POL': 0.5,
+      'WBTC': 60000,
+      'USDC': 1,
+      'USDT': 1,
+      'DAI': 1
+    };
+
+    // Update cache
+    tokenPriceCache = fallbackPrices;
+    lastPriceFetch = now;
+
+    return fallbackPrices;
+  }
+};
+
 // Helper function to get chain name from ID
 const getChainName = (chainId: string): string => {
-  return chainIdToName[chainId] || `chain-${chainId}`;
+  const chainName = chainIdToName[chainId] || `chain-${chainId}`;
+  // Capitalize the first letter
+  return chainName.charAt(0).toUpperCase() + chainName.slice(1);
 };
 
 // Helper function to get token info
@@ -105,12 +227,12 @@ export const BridgeService = {
     `;
 
     try {
-      const data = await bridgeClient.request(query, { limit });
+      const data = await bridgeClient.request(query, { limit }) as any;
 
       // Transform the data to match the expected format in the frontend
-      return data.bridgeMessages.map((message: any) => {
+      const messages = data.bridgeMessages.map((message: any) => {
         // Get token info - either from the token object or from our mapping
-        let tokenInfo = { symbol: null, name: null, decimals: 18 };
+        let tokenInfo: { symbol: string | null, name: string | null, decimals: number } = { symbol: null, name: null, decimals: 18 };
         if (message.token) {
           // Use our mapping if the symbol is ??? or Unknown
           if (message.token.symbol === '???' || message.token.name.includes('Unknown')) {
@@ -144,6 +266,13 @@ export const BridgeService = {
           token: message.token ? tokenInfo : null
         };
       });
+
+      // Filter messages to only include those to/from KalyChain (domain 3888)
+      const filteredMessages = messages.filter((message: any) => {
+        return message.sourceChain === 'Kalychain' || message.destinationChain === 'Kalychain';
+      });
+
+      return filteredMessages;
     } catch (error) {
       console.error('Error fetching bridge messages:', error);
       return [];
@@ -176,7 +305,7 @@ export const BridgeService = {
     `;
 
     try {
-      const data = await bridgeClient.request(query, { id });
+      const data = await bridgeClient.request(query, { id }) as any;
 
       if (!data.bridgeMessage) {
         return null;
@@ -185,7 +314,7 @@ export const BridgeService = {
       const message = data.bridgeMessage;
 
       // Get token info - either from the token object or from our mapping
-      let tokenInfo = { symbol: null, name: null, decimals: 18 };
+      let tokenInfo: { symbol: string | null, name: string | null, decimals: number } = { symbol: null, name: null, decimals: 18 };
       if (message.token) {
         // Use our mapping if the symbol is ??? or Unknown
         if (message.token.symbol === '???' || message.token.name.includes('Unknown')) {
@@ -247,11 +376,14 @@ export const BridgeService = {
     `;
 
     try {
-      const data = await bridgeClient.request(query);
+      const data = await bridgeClient.request(query) as any;
 
       if (!data.bridgeStats) {
         throw new Error('No bridge stats found');
       }
+
+      // Get token prices
+      const tokenPrices = await getTokenPrices();
 
       // Process tokens to use our mapping for unknown tokens
       const processedTokens = data.tokens.map((token: any) => {
@@ -263,12 +395,20 @@ export const BridgeService = {
           const totalBridgedIn = formatTokenAmount(token.totalBridgedIn, tokenInfo.decimals);
           const totalBridgedOut = formatTokenAmount(token.totalBridgedOut, tokenInfo.decimals);
 
+          // Calculate USD values
+          const tokenPrice = tokenPrices[tokenInfo.symbol] || 0;
+          const totalBridgedInUSD = parseFloat(totalBridgedIn) * tokenPrice;
+          const totalBridgedOutUSD = parseFloat(totalBridgedOut) * tokenPrice;
+
           return {
             ...token,
             symbol: tokenInfo.symbol,
             name: tokenInfo.name,
             totalBridgedIn,
             totalBridgedOut,
+            totalBridgedInUSD: totalBridgedInUSD.toFixed(2),
+            totalBridgedOutUSD: totalBridgedOutUSD.toFixed(2),
+            tokenPrice,
             rawTotalBridgedIn: token.totalBridgedIn,
             rawTotalBridgedOut: token.totalBridgedOut
           };
@@ -281,10 +421,21 @@ export const BridgeService = {
         const totalBridgedIn = formatTokenAmount(token.totalBridgedIn, decimals);
         const totalBridgedOut = formatTokenAmount(token.totalBridgedOut, decimals);
 
+        // Get token symbol from mapping if available
+        const symbol = token.symbol === '???' ? 'Unknown' : token.symbol;
+
+        // Calculate USD values
+        const tokenPrice = tokenPrices[symbol] || 0;
+        const totalBridgedInUSD = parseFloat(totalBridgedIn) * tokenPrice;
+        const totalBridgedOutUSD = parseFloat(totalBridgedOut) * tokenPrice;
+
         return {
           ...token,
           totalBridgedIn,
           totalBridgedOut,
+          totalBridgedInUSD: totalBridgedInUSD.toFixed(2),
+          totalBridgedOutUSD: totalBridgedOutUSD.toFixed(2),
+          tokenPrice,
           rawTotalBridgedIn: token.totalBridgedIn,
           rawTotalBridgedOut: token.totalBridgedOut
         };
@@ -294,20 +445,59 @@ export const BridgeService = {
       const totalTokensIn = data.bridgeStats.totalTokensIn || '0';
       const totalTokensOut = data.bridgeStats.totalTokensOut || '0';
 
+      // Calculate adjusted volume by summing individual token volumes
+      // This helps avoid counting test transactions or other outliers
+      let adjustedVolumeIn = BigInt(0);
+      let adjustedVolumeOut = BigInt(0);
+
+      // Maximum transfer size to consider (in wei) - 1,000 tokens with 18 decimals
+      const MAX_TRANSFER_SIZE = BigInt('1000000000000000000000');
+
+      // Calculate adjusted volume from individual token transfers
+      processedTokens.forEach((token: any) => {
+        // Convert string to BigInt for calculations
+        const tokenIn = BigInt(token.rawTotalBridgedIn || '0');
+        const tokenOut = BigInt(token.rawTotalBridgedOut || '0');
+
+        // Only count transfers below the maximum size
+        if (tokenIn < MAX_TRANSFER_SIZE) {
+          adjustedVolumeIn += tokenIn;
+        }
+
+        if (tokenOut < MAX_TRANSFER_SIZE) {
+          adjustedVolumeOut += tokenOut;
+        }
+      });
+
       const formattedVolumeIn = formatTokenAmount(totalTokensIn, 18);
       const formattedVolumeOut = formatTokenAmount(totalTokensOut, 18);
+
+      // Format adjusted volumes
+      const formattedAdjustedVolumeIn = formatTokenAmount(adjustedVolumeIn.toString(), 18);
+      const formattedAdjustedVolumeOut = formatTokenAmount(adjustedVolumeOut.toString(), 18);
 
       // Calculate total volume (formatted)
       const totalVolume = (
         BigInt(totalTokensIn) + BigInt(totalTokensOut)
       ).toString();
 
-      const formattedTotalVolume = formatTokenAmount(totalVolume, 18);
+      // Calculate adjusted total volume
+      const adjustedTotalVolume = (adjustedVolumeIn + adjustedVolumeOut).toString();
+
+      const formattedTotalVolume = formatTokenAmount(adjustedTotalVolume, 18);
+
+      // Calculate total USD volume
+      let totalVolumeUSD = 0;
+      processedTokens.forEach((token: any) => {
+        totalVolumeUSD += parseFloat(token.totalBridgedInUSD) + parseFloat(token.totalBridgedOutUSD);
+      });
 
       // Transform the data to match the expected format in the frontend
       return {
         totalMessages: parseInt(data.bridgeStats.totalMessages),
         totalVolume: formattedTotalVolume,
+        totalVolumeUSD: totalVolumeUSD.toFixed(2),
+        totalTokenTransfers: parseInt(data.bridgeStats.totalTokenTransfers),
         rawTotalVolume: totalVolume,
         chainStats: [
           {
@@ -327,13 +517,18 @@ export const BridgeService = {
       return {
         totalMessages: 0,
         totalVolume: '0',
+        totalVolumeUSD: '0.00',
+        totalTokenTransfers: 0,
+        rawTotalVolume: '0',
         chainStats: [
           {
             chain: 'kalychain',
             messagesIn: 0,
             messagesOut: 0,
             volumeIn: '0',
-            volumeOut: '0'
+            volumeOut: '0',
+            rawVolumeIn: '0',
+            rawVolumeOut: '0'
           }
         ],
         tokens: []

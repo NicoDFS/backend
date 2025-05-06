@@ -161,6 +161,146 @@ dataSources:
           handler: handleReceivedTransferRemoteNative
       file: ./src/hyp-native.ts
 
+  # POL Native Token
+  - kind: ethereum
+    name: POLNative
+    network: kalychain
+    source:
+      address: "0x9c3c9283d3e44854697cd22d3faa240cfb032889"
+      abi: HypNative
+      startBlock: 23700000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypNative
+          file: ../../src/blockchain/abis/bridge/HypNative.json
+      eventHandlers:
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleSentTransferRemoteNative
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleReceivedTransferRemoteNative
+      file: ./src/hyp-native.ts
+
+  # USDC Token
+  - kind: ethereum
+    name: USDC
+    network: kalychain
+    source:
+      address: "0x9cAb0c396cF0F4325913f2269a0b72BD4d46E3A9"
+      abi: HypERC20
+      startBlock: 23700000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypERC20
+          file: ../../src/blockchain/abis/bridge/HypERC20.json
+      eventHandlers:
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleSentTransferRemote
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleReceivedTransferRemote
+      file: ./src/hyp-erc20.ts
+
+  # USDT Token
+  - kind: ethereum
+    name: USDT
+    network: kalychain
+    source:
+      address: "0x2CA775C77B922A51FcF3097F52bFFdbc0250D99A"
+      abi: HypERC20
+      startBlock: 23700000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypERC20
+          file: ../../src/blockchain/abis/bridge/HypERC20.json
+      eventHandlers:
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleSentTransferRemote
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleReceivedTransferRemote
+      file: ./src/hyp-erc20.ts
+
+  # DAI Token
+  - kind: ethereum
+    name: DAI
+    network: kalychain
+    source:
+      address: "0x6E92CAC380F7A7B86f4163fad0df2F277B16Edc6"
+      abi: HypERC20
+      startBlock: 23700000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypERC20
+          file: ../../src/blockchain/abis/bridge/HypERC20.json
+      eventHandlers:
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleSentTransferRemote
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleReceivedTransferRemote
+      file: ./src/hyp-erc20.ts
+
+  # WBTC Token
+  - kind: ethereum
+    name: WBTC
+    network: kalychain
+    source:
+      address: "0xaA77D4a26d432B82DB07F8a47B7f7F623fd92455"
+      abi: HypERC20
+      startBlock: 23700000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypERC20
+          file: ../../src/blockchain/abis/bridge/HypERC20.json
+      eventHandlers:
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleSentTransferRemote
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleReceivedTransferRemote
+      file: ./src/hyp-erc20.ts
+
 templates:
   - kind: ethereum
     name: HypERC20

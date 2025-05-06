@@ -160,11 +160,20 @@ const typeDefs = gql`
     originTxHash: String
     destinationTxHash: String
     timestamp: String!
+    token: BridgeTokenInfo
+  }
+
+  type BridgeTokenInfo {
+    symbol: String
+    name: String
+    decimals: Int
   }
 
   type BridgeStats {
     totalMessages: Int!
     totalVolume: String!
+    totalVolumeUSD: String
+    totalTokenTransfers: Int
     chainStats: [ChainStat!]!
     tokens: [BridgeToken]
   }
@@ -175,6 +184,9 @@ const typeDefs = gql`
     name: String!
     totalBridgedIn: String
     totalBridgedOut: String
+    totalBridgedInUSD: String
+    totalBridgedOutUSD: String
+    tokenPrice: Float
   }
 
   type ChainStat {
@@ -183,6 +195,8 @@ const typeDefs = gql`
     messagesOut: Int!
     volumeIn: String!
     volumeOut: String!
+    rawVolumeIn: String
+    rawVolumeOut: String
   }
 
   type WarpRoute {
