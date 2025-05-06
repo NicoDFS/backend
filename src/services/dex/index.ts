@@ -12,6 +12,9 @@ const STAKING_REWARDS_ADDRESS = '0x2bD4B7f303C1f372689d52A55ec202E0cf831a26';
 const KSWAP_ADDRESS = '0xCC93b84cEed74Dc28c746b7697d6fA477ffFf65a';
 const WKLC_ADDRESS = '0x069255299Bb729399f3CECaBdc73d15d3D10a2A3';
 
+// Important pair addresses
+const WKLC_USDT_PAIR_ADDRESS = '0x25FDDaF836d12dC5e285823a644bb86E0b79c8e2'; // Current/correct WKLC/USDT pair
+
 // Use real data from the subgraph
 const USE_MOCK_DATA = false;
 
@@ -120,7 +123,11 @@ export const DexService = {
 
     try {
       const { pairs } = await dexClient.request(query, { first, skip, orderBy, orderDirection });
-      return pairs;
+
+      // Process pairs to handle duplicates
+      const processedPairs = this.handleDuplicatePairs(pairs);
+
+      return processedPairs;
     } catch (error) {
       console.error('Error fetching pairs:', error);
       return [];
@@ -570,6 +577,71 @@ export const DexService = {
       console.error('Error fetching factory contract data:', error);
       return null;
     }
+  },
+
+  // Helper method to handle duplicate pairs (like WKLC/USDT)
+  handleDuplicatePairs(pairs: any[]) {
+    if (!pairs || pairs.length === 0) return [];
+
+    // Create a map to track pairs by token symbols
+    const pairsBySymbols: { [key: string]: any[] } = {};
+
+    // Group pairs by their token symbols
+    pairs.forEach(pair => {
+      // Create a consistent key regardless of token order
+      const token0Symbol = pair.token0.symbol;
+      const token1Symbol = pair.token1.symbol;
+      const symbolKey = [token0Symbol, token1Symbol].sort().join('/');
+
+      if (!pairsBySymbols[symbolKey]) {
+        pairsBySymbols[symbolKey] = [];
+      }
+
+      pairsBySymbols[symbolKey].push(pair);
+    });
+
+    // Process each group to handle duplicates
+    const processedPairs: any[] = [];
+
+    Object.keys(pairsBySymbols).forEach(symbolKey => {
+      const symbolPairs = pairsBySymbols[symbolKey];
+
+      // If there's only one pair with these symbols, add it directly
+      if (symbolPairs.length === 1) {
+        processedPairs.push(symbolPairs[0]);
+        return;
+      }
+
+      // Handle WKLC/USDT specifically
+      if (symbolKey === 'USDT/WKLC' || symbolKey === 'WKLC/USDT') {
+        // Find the correct pair by address
+        const correctPair = symbolPairs.find(p =>
+          p.id.toLowerCase() === WKLC_USDT_PAIR_ADDRESS.toLowerCase()
+        );
+
+        // If found, use it; otherwise use the one with highest liquidity
+        if (correctPair) {
+          processedPairs.push(correctPair);
+        } else {
+          // Sort by reserveUSD (descending) and take the first one
+          const sortedPairs = [...symbolPairs].sort((a, b) =>
+            parseFloat(b.reserveUSD || '0') - parseFloat(a.reserveUSD || '0')
+          );
+          processedPairs.push(sortedPairs[0]);
+        }
+      } else {
+        // For other duplicate pairs, use the one with highest liquidity
+        const sortedPairs = [...symbolPairs].sort((a, b) =>
+          parseFloat(b.reserveUSD || '0') - parseFloat(a.reserveUSD || '0')
+        );
+        processedPairs.push(sortedPairs[0]);
+      }
+    });
+
+    // Sort the processed pairs by the original criteria (usually reserveUSD)
+    return processedPairs.sort((a, b) =>
+      parseFloat(b.reserveUSD || '0') - parseFloat(a.reserveUSD || '0')
+    );
   },
 
   // Get DEX overview data for dashboard
