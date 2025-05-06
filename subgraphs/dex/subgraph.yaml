@@ -8,7 +8,7 @@ dataSources:
     source:
       address: "0xD42Af909d323D88e0E933B6c50D3e91c279004ca"
       abi: KalyswapFactory
-      startBlock: 30000000  # Replace with the actual deployment block
+      startBlock: 6880688  # Replace with the actual deployment block
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -36,7 +36,7 @@ dataSources:
     source:
       address: "0xCC93b84cEed74Dc28c746b7697d6fA477ffFf65a"  # KSWAP token address
       abi: KswapToken
-      startBlock: 30000000  # Replace with the actual deployment block
+      startBlock: 6880633  # Replace with the actual deployment block
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -63,7 +63,7 @@ dataSources:
     source:
       address: "0x2bD4B7f303C1f372689d52A55ec202E0cf831a26"  # StakingRewards contract address
       abi: StakingRewards
-      startBlock: 30000000  # Replace with the actual deployment block
+      startBlock: 24707216  # Replace with the actual deployment block
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -99,7 +99,7 @@ dataSources:
     source:
       address: "0xe83e7ede1358FA87e5039CF8B1cffF383Bc2896A"  # LiquidityPoolManagerV2 contract address
       abi: LiquidityPoolManagerV2
-      startBlock: 30000000  # Replace with the actual deployment block
+      startBlock: 6880890  # Replace with the actual deployment block
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -125,7 +125,7 @@ dataSources:
     source:
       address: "0x4C4b968232a8603e2D1e53AB26E9a0319fA33ED3"  # TreasuryVester contract address
       abi: TreasuryVester
-      startBlock: 30000000  # Replace with the actual deployment block
+      startBlock: 6880809  # Replace with the actual deployment block
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
