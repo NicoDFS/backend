@@ -166,6 +166,15 @@ const typeDefs = gql`
     totalMessages: Int!
     totalVolume: String!
     chainStats: [ChainStat!]!
+    tokens: [BridgeToken]
+  }
+
+  type BridgeToken {
+    id: ID!
+    symbol: String!
+    name: String!
+    totalBridgedIn: String
+    totalBridgedOut: String
   }
 
   type ChainStat {

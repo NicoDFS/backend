@@ -1,6 +1,13 @@
 # Bridge Subgraph
 
-This subgraph indexes Hyperlane bridge transactions on KalyChain, including message passing, gas payments, and token transfers.
+This subgraph indexes Hyperlane bridge transactions on KalyChain, including message passing and token transfers. It tracks cross-chain messages and token transfers for both ERC20 and native tokens.
+
+## Known Issues and Fixes
+
+- The event signatures in the ABIs differ from the documentation, requiring custom mapping
+- InterchainGasPaymaster is not used in Hyperlane v3 deployment
+- The SentTransferRemote and ReceivedTransferRemote events in the HypERC20 and HypNative contracts don't include the recipient parameter as expected
+- The event is named ValidatorAnnouncement in the ABI, not Announcement as initially expected
 
 ## Setup
 
@@ -31,11 +38,21 @@ npm run deploy-local
 
 ## Contract Addresses
 
-Before deploying, make sure to update the contract addresses in `subgraph.yaml` with the correct addresses for your Hyperlane deployment on KalyChain:
+The subgraph is configured to use the following contract addresses from your Hyperlane v3 deployment on KalyChain:
 
-- Mailbox: `0x5b6CFf85442B851A8e6eaBd2A4E4507B5135B3B0` (replace with actual address)
-- InterchainGasPaymaster: `0x56f52c0A1ddcD557285f7CBc782D3d83096CE1Cc` (replace with actual address)
-- ValidatorAnnounce: `0x9A5927F7F8E7AA6D3D5126B64B5A880D536D5E09` (replace with actual address)
+- Mailbox: `0xa87EF115066A311C88A6E5E86B93E4E2b1C33723`
+- MerkleTreeHook: `0x6f39af116d86925A046D6C9DC70C02c0435cB64C`
+- ValidatorAnnounce: `0xB038dDE315D8833D1208830C8327193d85455B04`
+
+## Entities
+
+- **BridgeMessage**: Tracks cross-chain messages
+- **Token**: Information about tokens being bridged
+- **TokenTransfer**: Records of token transfers across chains
+- **Validator**: Information about bridge validators
+- **ChainStats**: Statistics for each chain
+- **BridgeStats**: Overall bridge statistics
+- **DailyBridgeStats**: Daily aggregated statistics
 
 ## Token Contracts
 
@@ -89,5 +106,19 @@ Example query to get token transfer statistics:
 
 To check the sync status of your subgraph, run:
 ```bash
+curl -X POST http://localhost:8030/graphql -H "Content-Type: application/json" -d '{"query": "{ indexingStatusForCurrentVersion(subgraphName: \"kalyswap/bridge-subgraph\") { synced health chains { network latestBlock { number } chainHeadBlock { number } } } }"}'
+```
+
+Or to check the indexed data:
+```bash
 curl -X POST -H "Content-Type: application/json" --data '{"query": "{_meta{block{number}}}"}'  http://localhost:8000/subgraphs/name/kalyswap/bridge-subgraph
 ```
+
+## Testing
+
+Simple tests have been added to verify utility functions. To run the tests:
+```bash
+npm run test
+```
+
+Note: The full test suite requires generated code from `npm run codegen` to be working properly.

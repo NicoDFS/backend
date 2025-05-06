@@ -85,7 +85,7 @@ type BridgeStats @entity(immutable: false) {
   lastUpdated: BigInt!
 }
 
-type DailyBridgeStats @entity(immutable: true) {
+type DailyBridgeStats @entity(immutable: false) {
   id: ID!
   date: String!
   messagesCount: BigInt!

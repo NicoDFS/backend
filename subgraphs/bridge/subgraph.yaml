@@ -6,9 +6,9 @@ dataSources:
     name: Mailbox
     network: kalychain
     source:
-      address: "0x5b6CFf85442B851A8e6eaBd2A4E4507B5135B3B0"  # Replace with actual Mailbox address on KalyChain
+      address: "0xa87EF115066A311C88A6E5E86B93E4E2b1C33723"
       abi: Mailbox
-      startBlock: 22000000
+      startBlock: 23700000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -26,43 +26,43 @@ dataSources:
         - name: HypNative
           file: ../../src/blockchain/abis/bridge/HypNative.json
       eventHandlers:
-        - event: Dispatch(indexed uint32,indexed uint32,indexed bytes32,bytes)
+        - event: Dispatch(indexed address,indexed uint32,indexed bytes32,bytes)
           handler: handleDispatch
-        - event: Process(indexed uint32,indexed uint32,indexed bytes32,address,address,bytes)
+        - event: Process(indexed uint32,indexed bytes32,indexed address)
           handler: handleProcess
       file: ./src/mailbox.ts
-  
+
   - kind: ethereum
-    name: InterchainGasPaymaster
+    name: MerkleTreeHook
     network: kalychain
     source:
-      address: "0x56f52c0A1ddcD557285f7CBc782D3d83096CE1Cc"  # Replace with actual IGP address on KalyChain
-      abi: InterchainGasPaymaster
-      startBlock: 22000000
+      address: "0x6f39af116d86925A046D6C9DC70C02c0435cB64C"  # MerkleTreeHook address
+      abi: MerkleTreeHook
+      startBlock: 23700000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - GasPayment
+        - BridgeMessage
         - BridgeStats
         - ChainStats
         - DailyBridgeStats
       abis:
-        - name: InterchainGasPaymaster
-          file: ../../src/blockchain/abis/bridge/InterchainGasPaymaster.json
+        - name: MerkleTreeHook
+          file: ../../src/blockchain/abis/bridge/MerkleTreeHook.json
       eventHandlers:
-        - event: GasPayment(indexed bytes32,indexed uint32,uint256,uint256,address)
-          handler: handleGasPayment
-      file: ./src/gas-paymaster.ts
+        - event: InsertedIntoTree(bytes32,uint32)
+          handler: handleInsertedIntoTree
+      file: ./src/merkle-tree-hook.ts
 
   - kind: ethereum
     name: ValidatorAnnounce
     network: kalychain
     source:
-      address: "0x9A5927F7F8E7AA6D3D5126B64B5A880D536D5E09"  # Replace with actual ValidatorAnnounce address on KalyChain
+      address: "0xB038dDE315D8833D1208830C8327193d85455B04"  # ValidatorAnnounce address
       abi: ValidatorAnnounce
-      startBlock: 22000000
+      startBlock: 23700000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -73,9 +73,93 @@ dataSources:
         - name: ValidatorAnnounce
           file: ../../src/blockchain/abis/bridge/ValidatorAnnounce.json
       eventHandlers:
-        - event: Announcement(indexed address,string)
+        - event: ValidatorAnnouncement(indexed address,string)
           handler: handleAnnouncement
       file: ./src/validator.ts
+
+  # KLC Native Token
+  - kind: ethereum
+    name: KLCNative
+    network: kalychain
+    source:
+      address: "0x8A1ABbB167b149F2493C8141091028fD812Da6E4"
+      abi: HypNative
+      startBlock: 23700000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypNative
+          file: ../../src/blockchain/abis/bridge/HypNative.json
+      eventHandlers:
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleSentTransferRemoteNative
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleReceivedTransferRemoteNative
+      file: ./src/hyp-native.ts
+
+  # ETH Native Token
+  - kind: ethereum
+    name: ETHNative
+    network: kalychain
+    source:
+      address: "0xfdbB253753dDE60b11211B169dC872AaE672879b"
+      abi: HypNative
+      startBlock: 23700000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypNative
+          file: ../../src/blockchain/abis/bridge/HypNative.json
+      eventHandlers:
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleSentTransferRemoteNative
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleReceivedTransferRemoteNative
+      file: ./src/hyp-native.ts
+
+  # BNB Native Token
+  - kind: ethereum
+    name: BNBNative
+    network: kalychain
+    source:
+      address: "0x0e2318b62a096AC68ad2D7F37592CBf0cA9c4Ddb"
+      abi: HypNative
+      startBlock: 23700000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypNative
+          file: ../../src/blockchain/abis/bridge/HypNative.json
+      eventHandlers:
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleSentTransferRemoteNative
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleReceivedTransferRemoteNative
+      file: ./src/hyp-native.ts
 
 templates:
   - kind: ethereum
@@ -97,9 +181,9 @@ templates:
         - name: HypERC20
           file: ../../src/blockchain/abis/bridge/HypERC20.json
       eventHandlers:
-        - event: SentTransferRemote(uint32,bytes32,address,uint256)
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
           handler: handleSentTransferRemote
-        - event: ReceivedTransferRemote(uint32,bytes32,address,uint256)
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
           handler: handleReceivedTransferRemote
       file: ./src/hyp-erc20.ts
 
@@ -122,8 +206,8 @@ templates:
         - name: HypNative
           file: ../../src/blockchain/abis/bridge/HypNative.json
       eventHandlers:
-        - event: SentTransferRemote(uint32,bytes32,address,uint256)
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
           handler: handleSentTransferRemoteNative
-        - event: ReceivedTransferRemote(uint32,bytes32,address,uint256)
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
           handler: handleReceivedTransferRemoteNative
       file: ./src/hyp-native.ts

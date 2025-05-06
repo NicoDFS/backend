@@ -24,9 +24,9 @@ export const HyperlaneApiService = {
         }
       }
     `;
-    
+
     const variables = { originChain, limit };
-    
+
     try {
       const data = await hyperlaneClient.request(query, variables);
       return data.messages;
@@ -35,7 +35,7 @@ export const HyperlaneApiService = {
       return [];
     }
   },
-  
+
   async getBridgeStats() {
     const query = gql`
       query GetBridgeStats {
@@ -52,13 +52,23 @@ export const HyperlaneApiService = {
         }
       }
     `;
-    
+
     try {
       const data = await hyperlaneClient.request(query);
-      return data.messageStats;
+
+      // Add tokens field to match the schema
+      return {
+        ...data.messageStats,
+        tokens: [] // Empty array as fallback
+      };
     } catch (error) {
       console.error('Error fetching Hyperlane stats:', error);
-      return null;
+      return {
+        totalMessages: 0,
+        totalVolume: '0',
+        chainStats: [],
+        tokens: []
+      };
     }
   },
 
@@ -79,9 +89,9 @@ export const HyperlaneApiService = {
         }
       }
     `;
-    
+
     const variables = { id };
-    
+
     try {
       const data = await hyperlaneClient.request(query, variables);
       return data.message;
