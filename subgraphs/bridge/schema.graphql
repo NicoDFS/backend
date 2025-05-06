@@ -1,0 +1,97 @@
+type BridgeMessage @entity(immutable: false) {
+  id: ID!
+  messageId: Bytes!
+  sender: Bytes!
+  recipient: Bytes!
+  originDomain: BigInt!
+  destinationDomain: BigInt!
+  messageBody: Bytes!
+  status: String!
+  dispatchTxHash: Bytes
+  dispatchTimestamp: BigInt!
+  deliveryTxHash: Bytes
+  deliveryTimestamp: BigInt
+  gasAmount: BigInt
+  gasPayment: BigInt
+  token: Token
+  amount: BigInt
+}
+
+type GasPayment @entity(immutable: true) {
+  id: ID!
+  messageId: Bytes!
+  destinationDomain: BigInt!
+  gasAmount: BigInt!
+  payment: BigInt!
+  payer: Bytes!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+type Token @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  symbol: String!
+  name: String!
+  decimals: Int!
+  chainId: BigInt!
+  standard: String! # HypNative, HypSynthetic, etc.
+  totalBridgedOut: BigInt!
+  totalBridgedIn: BigInt!
+  bridgeTransactions: [TokenTransfer!]! @derivedFrom(field: "token")
+}
+
+type TokenTransfer @entity(immutable: true) {
+  id: ID!
+  messageId: Bytes!
+  token: Token!
+  sender: Bytes!
+  recipient: Bytes!
+  amount: BigInt!
+  originDomain: BigInt!
+  destinationDomain: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+  direction: String! # "outgoing" or "incoming"
+}
+
+type Validator @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  storageLocation: String!
+  announcedAt: BigInt!
+  txHash: Bytes!
+}
+
+type ChainStats @entity(immutable: false) {
+  id: ID!
+  chainId: BigInt!
+  totalMessagesOut: BigInt!
+  totalMessagesIn: BigInt!
+  totalGasPayments: BigInt!
+  totalTokensOut: BigInt!
+  totalTokensIn: BigInt!
+  lastUpdated: BigInt!
+}
+
+type BridgeStats @entity(immutable: false) {
+  id: ID!
+  totalMessages: BigInt!
+  totalMessagesDelivered: BigInt!
+  totalGasPayments: BigInt!
+  totalTokenTransfers: BigInt!
+  totalTokensOut: BigInt!
+  totalTokensIn: BigInt!
+  lastUpdated: BigInt!
+}
+
+type DailyBridgeStats @entity(immutable: true) {
+  id: ID!
+  date: String!
+  messagesCount: BigInt!
+  messagesDeliveredCount: BigInt!
+  gasPaymentsCount: BigInt!
+  gasPaymentsAmount: BigInt!
+  tokenTransfersCount: BigInt!
+  tokenTransfersAmount: BigInt!
+}

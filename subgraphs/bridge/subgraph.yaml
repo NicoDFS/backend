@@ -1,0 +1,129 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: Mailbox
+    network: kalychain
+    source:
+      address: "0x5b6CFf85442B851A8e6eaBd2A4E4507B5135B3B0"  # Replace with actual Mailbox address on KalyChain
+      abi: Mailbox
+      startBlock: 22000000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - BridgeMessage
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: Mailbox
+          file: ../../src/blockchain/abis/bridge/Mailbox.json
+        - name: HypERC20
+          file: ../../src/blockchain/abis/bridge/HypERC20.json
+        - name: HypNative
+          file: ../../src/blockchain/abis/bridge/HypNative.json
+      eventHandlers:
+        - event: Dispatch(indexed uint32,indexed uint32,indexed bytes32,bytes)
+          handler: handleDispatch
+        - event: Process(indexed uint32,indexed uint32,indexed bytes32,address,address,bytes)
+          handler: handleProcess
+      file: ./src/mailbox.ts
+  
+  - kind: ethereum
+    name: InterchainGasPaymaster
+    network: kalychain
+    source:
+      address: "0x56f52c0A1ddcD557285f7CBc782D3d83096CE1Cc"  # Replace with actual IGP address on KalyChain
+      abi: InterchainGasPaymaster
+      startBlock: 22000000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - GasPayment
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: InterchainGasPaymaster
+          file: ../../src/blockchain/abis/bridge/InterchainGasPaymaster.json
+      eventHandlers:
+        - event: GasPayment(indexed bytes32,indexed uint32,uint256,uint256,address)
+          handler: handleGasPayment
+      file: ./src/gas-paymaster.ts
+
+  - kind: ethereum
+    name: ValidatorAnnounce
+    network: kalychain
+    source:
+      address: "0x9A5927F7F8E7AA6D3D5126B64B5A880D536D5E09"  # Replace with actual ValidatorAnnounce address on KalyChain
+      abi: ValidatorAnnounce
+      startBlock: 22000000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Validator
+      abis:
+        - name: ValidatorAnnounce
+          file: ../../src/blockchain/abis/bridge/ValidatorAnnounce.json
+      eventHandlers:
+        - event: Announcement(indexed address,string)
+          handler: handleAnnouncement
+      file: ./src/validator.ts
+
+templates:
+  - kind: ethereum
+    name: HypERC20
+    network: kalychain
+    source:
+      abi: HypERC20
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypERC20
+          file: ../../src/blockchain/abis/bridge/HypERC20.json
+      eventHandlers:
+        - event: SentTransferRemote(uint32,bytes32,address,uint256)
+          handler: handleSentTransferRemote
+        - event: ReceivedTransferRemote(uint32,bytes32,address,uint256)
+          handler: handleReceivedTransferRemote
+      file: ./src/hyp-erc20.ts
+
+  - kind: ethereum
+    name: HypNative
+    network: kalychain
+    source:
+      abi: HypNative
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypNative
+          file: ../../src/blockchain/abis/bridge/HypNative.json
+      eventHandlers:
+        - event: SentTransferRemote(uint32,bytes32,address,uint256)
+          handler: handleSentTransferRemoteNative
+        - event: ReceivedTransferRemote(uint32,bytes32,address,uint256)
+          handler: handleReceivedTransferRemoteNative
+      file: ./src/hyp-native.ts
