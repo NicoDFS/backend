@@ -302,7 +302,7 @@ const typeDefs = gql`
     dexDayData(first: Int, skip: Int): [DayData!]!
 
     # Bridge queries
-    bridges: [Bridge!]!
+    bridges(limit: Int, skip: Int): [Bridge!]!
     bridge(id: ID!): Bridge
     bridgeStats: BridgeStats
     warpRoutes: [WarpRoute!]!
