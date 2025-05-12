@@ -1,4 +1,4 @@
-import { BigInt, BigDecimal, Address } from '@graphprotocol/graph-ts';
+import { BigInt, BigDecimal, Address, log } from '@graphprotocol/graph-ts';
 import { ERC20 } from '../generated/KalyswapFactory/ERC20';
 import { Factory, Token, Pair, DayData, PairDayData, TokenDayData } from '../generated/schema';
 
@@ -12,6 +12,7 @@ export let WKLC_ADDRESS = '0x069255299Bb729399f3CECaBdc73d15d3D10a2A3';
 export let KSWAP_ADDRESS = '0xCC93b84cEed74Dc28c746b7697d6fA477ffFf65a';
 export let FACTORY_ADDRESS = '0xD42Af909d323D88e0E933B6c50D3e91c279004ca';
 export let WKLC_KSWAP_PAIR = ''; // Replace with the actual WKLC-KSWAP pair address
+export let WKLC_USDT_PAIR = '0x25fddaf836d12dc5e285823a644bb86e0b79c8e2'; // WKLC/USDT pair for price calculation
 
 export function exponentToBigDecimal(decimals: BigInt): BigDecimal {
   let bd = BigDecimal.fromString('1');
@@ -111,9 +112,100 @@ export function fetchTokenTotalSupply(tokenAddress: Address): BigInt {
 }
 
 export function getKLCPriceInUSD(): BigDecimal {
-  // For simplicity, we'll use a fixed price initially
-  // In a real implementation, you would calculate this from a stable pair
-  return BigDecimal.fromString('1.0');
+  // Try to get the price from the WKLC/USDT pair
+  let pair = Pair.load(WKLC_USDT_PAIR);
+
+  if (pair !== null) {
+    // Check which token is WKLC and which is USDT
+    let token0 = Token.load(pair.token0);
+    let token1 = Token.load(pair.token1);
+
+    if (token0 !== null && token1 !== null) {
+      let klcPrice: BigDecimal;
+      let token0Decimals = token0.decimals.toI32();
+      let token1Decimals = token1.decimals.toI32();
+
+      // Log token information for debugging
+      log.info(
+        'WKLC/USDT pair tokens - token0: {}, decimals: {}, token1: {}, decimals: {}',
+        [token0.symbol, token0Decimals.toString(), token1.symbol, token1Decimals.toString()]
+      );
+
+      if (token0.symbol == 'WKLC' && token1.symbol == 'USDT') {
+        // token1Price is the price of token0 in terms of token1
+        // So this is WKLC price in USDT
+        klcPrice = pair.token1Price;
+
+        // Log raw price for debugging
+        log.info('WKLC is token0, raw price: {}', [klcPrice.toString()]);
+
+        // Adjust for decimal difference if needed
+        // USDT typically has 6 decimals, WKLC has 18
+        if (token0Decimals != token1Decimals) {
+          let decimalDifference = token0Decimals - token1Decimals;
+          if (decimalDifference > 0) {
+            // If WKLC has more decimals than USDT, divide the price
+            klcPrice = klcPrice.div(exponentToBigDecimal(BigInt.fromI32(decimalDifference)));
+          } else {
+            // If USDT has more decimals than WKLC (unlikely), multiply the price
+            klcPrice = klcPrice.times(exponentToBigDecimal(BigInt.fromI32(-decimalDifference)));
+          }
+
+          // Log adjusted price for debugging
+          log.info('Adjusted price after decimal correction: {}', [klcPrice.toString()]);
+        }
+      } else if (token0.symbol == 'USDT' && token1.symbol == 'WKLC') {
+        // token0Price is the price of token1 in terms of token0
+        // So this is WKLC price in USDT
+        klcPrice = pair.token0Price;
+
+        // Log raw price for debugging
+        log.info('WKLC is token1, raw price: {}', [klcPrice.toString()]);
+
+        // Adjust for decimal difference if needed
+        // USDT typically has 6 decimals, WKLC has 18
+        if (token0Decimals != token1Decimals) {
+          let decimalDifference = token1Decimals - token0Decimals;
+          if (decimalDifference > 0) {
+            // If WKLC has more decimals than USDT, divide the price
+            klcPrice = klcPrice.div(exponentToBigDecimal(BigInt.fromI32(decimalDifference)));
+          } else {
+            // If USDT has more decimals than WKLC (unlikely), multiply the price
+            klcPrice = klcPrice.times(exponentToBigDecimal(BigInt.fromI32(-decimalDifference)));
+          }
+
+          // Log adjusted price for debugging
+          log.info('Adjusted price after decimal correction: {}', [klcPrice.toString()]);
+        }
+      } else {
+        // If neither token is WKLC or USDT, use fallback
+        log.warning('Neither token in pair is WKLC or USDT, using fallback price', []);
+        return BigDecimal.fromString('0.001221');
+      }
+
+      // Sanity check - KLC price should be very small (around $0.001)
+      let minReasonablePrice = BigDecimal.fromString('0.0001');
+      let maxReasonablePrice = BigDecimal.fromString('0.01');
+
+      if (klcPrice.equals(ZERO_BD) ||
+          klcPrice.lt(minReasonablePrice) ||
+          klcPrice.gt(maxReasonablePrice)) {
+        // Price is outside reasonable range, use fallback
+        log.warning(
+          'KLC price {} is outside reasonable range ({} to {}), using fallback',
+          [klcPrice.toString(), minReasonablePrice.toString(), maxReasonablePrice.toString()]
+        );
+        return BigDecimal.fromString('0.001221');
+      }
+
+      log.info('Final KLC price: {}', [klcPrice.toString()]);
+      return klcPrice;
+    }
+  }
+
+  // Fallback to a reasonable value if the pair doesn't exist or calculation fails
+  log.warning('Could not load WKLC/USDT pair, using fallback price', []);
+  return BigDecimal.fromString('0.001221'); // Current KLC price
 }
 
 export function findKLCPerToken(token: Token): BigDecimal {
@@ -121,8 +213,17 @@ export function findKLCPerToken(token: Token): BigDecimal {
     return ONE_BD;
   }
 
-  // For simplicity, we'll use a fixed value initially
-  // In a real implementation, you would calculate this from pairs
+  // Look for pairs with WKLC to calculate the token price in terms of KLC
+  // This is a simplified implementation - in a production environment,
+  // you would want to use a more sophisticated algorithm that considers
+  // liquidity and other factors
+
+  // For now, we'll use the token's existing derivedKLC value if it's set
+  if (token.derivedKLC && !token.derivedKLC.equals(ZERO_BD)) {
+    return token.derivedKLC;
+  }
+
+  // Fallback to a reasonable value
   return BigDecimal.fromString('0.01');
 }
 

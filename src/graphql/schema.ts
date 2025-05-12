@@ -147,6 +147,7 @@ const typeDefs = gql`
     factory: Factory
     dayData: DayData
     topPairs: [Pair]
+    klcPrice: Float
   }
 
   type Bridge {

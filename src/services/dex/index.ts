@@ -14,6 +14,7 @@ const WKLC_ADDRESS = '0x069255299Bb729399f3CECaBdc73d15d3D10a2A3';
 
 // Important pair addresses
 const WKLC_USDT_PAIR_ADDRESS = '0x25FDDaF836d12dC5e285823a644bb86E0b79c8e2'; // Current/correct WKLC/USDT pair
+const USDT_ADDRESS = '0x2CA775C77B922A51FcF3097F52bFFdbc0250D99A'; // Correct USDT address
 
 // Use real data from the subgraph
 const USE_MOCK_DATA = false;
@@ -57,6 +58,19 @@ export const DexService = {
 
     try {
       const { factory } = await dexClient.request(query);
+
+      // Debug log to see what data is being returned
+      console.log('Factory data from subgraph:', JSON.stringify(factory, null, 2));
+
+      // Check if totalLiquidityUSD and totalLiquidityKLC are valid
+      if (!factory.totalLiquidityUSD || factory.totalLiquidityUSD === '0') {
+        console.warn('Warning: totalLiquidityUSD is zero or missing in factory data');
+      }
+
+      if (!factory.totalLiquidityKLC || factory.totalLiquidityKLC === '0') {
+        console.warn('Warning: totalLiquidityKLC is zero or missing in factory data');
+      }
+
       return factory;
     } catch (error) {
       console.error('Error fetching factory:', error);
@@ -102,16 +116,19 @@ export const DexService = {
             symbol
             name
             decimals
+            derivedKLC
           }
           token1 {
             id
             symbol
             name
             decimals
+            derivedKLC
           }
           reserve0
           reserve1
           reserveUSD
+          reserveKLC
           volumeUSD
           token0Price
           token1Price
@@ -164,16 +181,19 @@ export const DexService = {
             symbol
             name
             decimals
+            derivedKLC
           }
           token1 {
             id
             symbol
             name
             decimals
+            derivedKLC
           }
           reserve0
           reserve1
           reserveUSD
+          reserveKLC
           volumeUSD
           token0Price
           token1Price
@@ -579,6 +599,129 @@ export const DexService = {
     }
   },
 
+  // Get KLC price from the WKLC/USDT pair in the subgraph
+  async getKLCPriceFromSubgraph() {
+    try {
+      console.log('Getting KLC price from WKLC/USDT pair in subgraph...');
+
+      // Get the WKLC/USDT pair from the subgraph
+      const pair = await this.getPair(WKLC_USDT_PAIR_ADDRESS.toLowerCase());
+
+      if (!pair) {
+        console.log('WKLC/USDT pair not found in subgraph, falling back to router method');
+        return await this.getKLCPriceFromRouter();
+      }
+
+      console.log('WKLC/USDT pair data:', JSON.stringify(pair, null, 2));
+
+      let klcPrice = 0;
+
+      // Determine which token is WKLC and which is USDT
+      if (pair.token0.symbol === 'WKLC' && pair.token1.symbol === 'USDT') {
+        // token1Price is the price of token0 in terms of token1
+        // So this is WKLC price in USDT
+        klcPrice = parseFloat(pair.token1Price);
+        console.log(`WKLC is token0, price from subgraph: ${klcPrice}`);
+      } else if (pair.token0.symbol === 'USDT' && pair.token1.symbol === 'WKLC') {
+        // token0Price is the price of token1 in terms of token0
+        // So this is WKLC price in USDT
+        klcPrice = parseFloat(pair.token0Price);
+        console.log(`WKLC is token1, price from subgraph: ${klcPrice}`);
+      } else {
+        console.log('Neither token in pair is WKLC or USDT, falling back to router method');
+        return await this.getKLCPriceFromRouter();
+      }
+
+      // Sanity check - KLC price should be very small (around $0.001)
+      const MIN_REASONABLE_PRICE = 0.0001;  // $0.0001
+      const MAX_REASONABLE_PRICE = 0.01;    // $0.01
+
+      if (klcPrice === 0 || isNaN(klcPrice) || klcPrice < MIN_REASONABLE_PRICE || klcPrice > MAX_REASONABLE_PRICE) {
+        console.log(`KLC price ${klcPrice} from subgraph is outside reasonable range (${MIN_REASONABLE_PRICE} to ${MAX_REASONABLE_PRICE}), falling back to router method`);
+        return await this.getKLCPriceFromRouter();
+      }
+
+      console.log(`Final KLC price from subgraph: $${klcPrice}`);
+      return klcPrice;
+    } catch (error) {
+      console.error('Error getting KLC price from subgraph:', error);
+      console.log('Falling back to router method');
+      return await this.getKLCPriceFromRouter();
+    }
+  },
+
+  // Get KLC price using Router contract's getAmountsOut method
+  async getKLCPriceFromRouter() {
+    try {
+      console.log('Getting KLC price from Router contract...');
+      const provider = getProvider();
+      const routerAbi = require('../../blockchain/abis/dex/routerABI.json');
+      const routerContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, provider);
+
+      // USDT address on KalyChain - using the correct address
+      const usdtAddress = USDT_ADDRESS;
+
+      // Log the addresses we're using
+      console.log(`Using addresses: WKLC=${WKLC_ADDRESS}, USDT=${usdtAddress}, Router=${ROUTER_ADDRESS}`);
+
+      // Amount of KLC to convert (1 KLC = 10^18 wei)
+      const amountIn = ethers.utils.parseEther('1');
+
+      // Path for the swap: KLC -> USDT
+      const path = [WKLC_ADDRESS, usdtAddress];
+
+      console.log(`Getting price for 1 KLC (${amountIn.toString()} wei) to USDT using path:`, path);
+
+      // Call getAmountsOut to get the expected output amount
+      const amounts = await routerContract.getAmountsOut(amountIn, path);
+      console.log(`Router returned amounts: ${amounts.map(a => a.toString()).join(', ')}`);
+
+      // Get USDT decimals (typically 6)
+      const erc20Abi = [
+        {
+          "constant": true,
+          "inputs": [],
+          "name": "decimals",
+          "outputs": [{"name": "", "type": "uint8"}],
+          "payable": false,
+          "stateMutability": "view",
+          "type": "function"
+        }
+      ];
+
+      const usdtContract = new ethers.Contract(usdtAddress, erc20Abi, provider);
+      const usdtDecimals = await usdtContract.decimals();
+
+      console.log(`USDT decimals: ${usdtDecimals}`);
+
+      // Convert the output amount to a decimal value
+      const usdtAmount = ethers.utils.formatUnits(amounts[1], usdtDecimals);
+
+      console.log(`1 KLC = ${usdtAmount} USDT`);
+
+      // Convert to a number for easier use
+      const klcPrice = parseFloat(usdtAmount);
+
+      // Sanity check - KLC price should be very small (around $0.001)
+      const MIN_REASONABLE_PRICE = 0.0001;  // $0.0001
+      const MAX_REASONABLE_PRICE = 0.01;    // $0.01
+
+      if (klcPrice === 0 || isNaN(klcPrice) || klcPrice < MIN_REASONABLE_PRICE || klcPrice > MAX_REASONABLE_PRICE) {
+        console.log(`KLC price ${klcPrice} is outside reasonable range (${MIN_REASONABLE_PRICE} to ${MAX_REASONABLE_PRICE}), using fallback price`);
+        return 0.001221; // Default fallback price
+      }
+
+      return klcPrice;
+    } catch (error: any) {
+      console.error('Error getting KLC price from Router:', error);
+      console.error('Error details:', error.message || error);
+      if (error.code === 'CALL_EXCEPTION') {
+        console.error('This might be due to incorrect contract addresses or the pair not existing');
+      }
+      return 0.001221; // Default fallback price
+    }
+  },
+
   // Helper method to handle duplicate pairs (like WKLC/USDT)
   handleDuplicatePairs(pairs: any[]) {
     if (!pairs || pairs.length === 0) return [];
@@ -644,23 +787,594 @@ export const DexService = {
     );
   },
 
+  // Calculate liquidity for a specific pair using the router contract
+  async calculatePairLiquidity(pairAddress: string) {
+    try {
+      console.log(`Calculating liquidity for pair ${pairAddress} using router contract...`);
+
+      // Get the pair data from the subgraph
+      const pair = await this.getPair(pairAddress.toLowerCase());
+
+      if (!pair) {
+        console.log(`Pair ${pairAddress} not found in subgraph`);
+        return { reserveUSD: '0', reserveKLC: '0' };
+      }
+
+      console.log(`Pair data:`, {
+        token0: {
+          symbol: pair.token0.symbol,
+          address: pair.token0.id,
+          decimals: pair.token0.decimals
+        },
+        token1: {
+          symbol: pair.token1.symbol,
+          address: pair.token1.id,
+          decimals: pair.token1.decimals
+        },
+        reserve0: pair.reserve0,
+        reserve1: pair.reserve1
+      });
+
+      // Special case for WKLC/USDT pair
+      if ((pair.token0.symbol === 'WKLC' && pair.token1.symbol === 'USDT') ||
+          (pair.token1.symbol === 'WKLC' && pair.token0.symbol === 'USDT')) {
+        console.log('Special handling for WKLC/USDT pair');
+
+        // Get WKLC price
+        const wklcPrice = await this.getKLCPriceFromRouter();
+        console.log(`WKLC price: $${wklcPrice}`);
+
+        // Determine which token is WKLC and which is USDT
+        let wklcReserve, usdtReserve;
+        if (pair.token0.symbol === 'WKLC') {
+          wklcReserve = parseFloat(pair.reserve0);
+          usdtReserve = parseFloat(pair.reserve1);
+          console.log(`WKLC is token0, reserve: ${wklcReserve}`);
+          console.log(`USDT is token1, reserve: ${usdtReserve}`);
+        } else {
+          wklcReserve = parseFloat(pair.reserve1);
+          usdtReserve = parseFloat(pair.reserve0);
+          console.log(`WKLC is token1, reserve: ${wklcReserve}`);
+          console.log(`USDT is token0, reserve: ${usdtReserve}`);
+        }
+
+        // Calculate USD values
+        const wklcValueUSD = wklcReserve * wklcPrice;
+        const usdtValueUSD = usdtReserve; // USDT is 1:1 with USD
+
+        console.log(`WKLC value in USD: $${wklcValueUSD.toFixed(2)}`);
+        console.log(`USDT value in USD: $${usdtValueUSD.toFixed(2)}`);
+
+        const totalReserveUSD = wklcValueUSD + usdtValueUSD;
+        console.log(`Total reserve in USD: $${totalReserveUSD.toFixed(2)}`);
+
+        return {
+          reserveUSD: totalReserveUSD.toString(),
+          reserveKLC: (totalReserveUSD / wklcPrice).toString()
+        };
+      }
+
+      // Get the provider and router contract
+      const provider = getProvider();
+      const routerAbi = require('../../blockchain/abis/dex/routerABI.json');
+      const routerContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, provider);
+
+      // Get token prices in USD
+      let token0PriceUSD = 0;
+      let token1PriceUSD = 0;
+
+      // Special case for stablecoins
+      if (pair.token0.symbol === 'USDT' || pair.token0.symbol === 'USDC' || pair.token0.symbol === 'DAI') {
+        token0PriceUSD = 1.0;
+        console.log(`Token0 (${pair.token0.symbol}) is a stablecoin, setting price to $1.00`);
+      }
+      // If token is WKLC, get its price directly
+      else if (pair.token0.id.toLowerCase() === WKLC_ADDRESS.toLowerCase()) {
+        token0PriceUSD = await this.getKLCPriceFromRouter();
+        console.log(`Token0 (${pair.token0.symbol}) is WKLC, price: $${token0PriceUSD}`);
+      } else {
+        // Try to get price via router (token -> WKLC -> USDT)
+        try {
+          // Amount of token0 to convert (1 token = 10^decimals)
+          const amountIn = ethers.utils.parseUnits('1', pair.token0.decimals);
+
+          // USDT address - using the correct address
+          const usdtAddress = USDT_ADDRESS;
+
+          // Path for the swap: token0 -> WKLC -> USDT
+          const path = [pair.token0.id, WKLC_ADDRESS, usdtAddress];
+
+          console.log(`Getting price for 1 ${pair.token0.symbol} using path:`, path);
+
+          // Call getAmountsOut to get the expected output amount
+          const amounts = await routerContract.getAmountsOut(amountIn, path);
+
+          // Get USDT decimals
+          const erc20Abi = [
+            {
+              "constant": true,
+              "inputs": [],
+              "name": "decimals",
+              "outputs": [{"name": "", "type": "uint8"}],
+              "payable": false,
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ];
+
+          const usdtContract = new ethers.Contract(usdtAddress, erc20Abi, provider);
+          const usdtDecimals = await usdtContract.decimals();
+
+          // Convert the output amount to a decimal value
+          const usdtAmount = ethers.utils.formatUnits(amounts[2], usdtDecimals);
+
+          // Convert to a number for easier use
+          token0PriceUSD = parseFloat(usdtAmount);
+          console.log(`Token0 (${pair.token0.symbol}) price: $${token0PriceUSD}`);
+        } catch (error: any) {
+          console.error(`Error getting price for token0 (${pair.token0.symbol}):`, error.message || error);
+        }
+      }
+
+      // Special case for stablecoins
+      if (pair.token1.symbol === 'USDT' || pair.token1.symbol === 'USDC' || pair.token1.symbol === 'DAI') {
+        token1PriceUSD = 1.0;
+        console.log(`Token1 (${pair.token1.symbol}) is a stablecoin, setting price to $1.00`);
+      }
+      // If token is WKLC, get its price directly
+      else if (pair.token1.id.toLowerCase() === WKLC_ADDRESS.toLowerCase()) {
+        token1PriceUSD = await this.getKLCPriceFromRouter();
+        console.log(`Token1 (${pair.token1.symbol}) is WKLC, price: $${token1PriceUSD}`);
+      } else {
+        // Try to get price via router (token -> WKLC -> USDT)
+        try {
+          // Amount of token1 to convert (1 token = 10^decimals)
+          const amountIn = ethers.utils.parseUnits('1', pair.token1.decimals);
+
+          // USDT address - using the correct address
+          const usdtAddress = USDT_ADDRESS;
+
+          // Path for the swap: token1 -> WKLC -> USDT
+          const path = [pair.token1.id, WKLC_ADDRESS, usdtAddress];
+
+          console.log(`Getting price for 1 ${pair.token1.symbol} using path:`, path);
+
+          // Call getAmountsOut to get the expected output amount
+          const amounts = await routerContract.getAmountsOut(amountIn, path);
+
+          // Get USDT decimals
+          const erc20Abi = [
+            {
+              "constant": true,
+              "inputs": [],
+              "name": "decimals",
+              "outputs": [{"name": "", "type": "uint8"}],
+              "payable": false,
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ];
+
+          const usdtContract = new ethers.Contract(usdtAddress, erc20Abi, provider);
+          const usdtDecimals = await usdtContract.decimals();
+
+          // Convert the output amount to a decimal value
+          const usdtAmount = ethers.utils.formatUnits(amounts[2], usdtDecimals);
+
+          // Convert to a number for easier use
+          token1PriceUSD = parseFloat(usdtAmount);
+          console.log(`Token1 (${pair.token1.symbol}) price: $${token1PriceUSD}`);
+        } catch (error: any) {
+          console.error(`Error getting price for token1 (${pair.token1.symbol}):`, error.message || error);
+        }
+      }
+
+      // If we couldn't get prices directly, try to derive them from the pair
+      if (token0PriceUSD === 0 && token1PriceUSD > 0) {
+        // If we have token1 price but not token0 price, derive token0 price from the pair ratio
+        const reserve0 = parseFloat(pair.reserve0);
+        const reserve1 = parseFloat(pair.reserve1);
+
+        if (reserve0 > 0 && reserve1 > 0) {
+          token0PriceUSD = (token1PriceUSD * reserve1) / reserve0;
+          console.log(`Derived token0 (${pair.token0.symbol}) price from pair ratio: $${token0PriceUSD}`);
+        }
+      } else if (token1PriceUSD === 0 && token0PriceUSD > 0) {
+        // If we have token0 price but not token1 price, derive token1 price from the pair ratio
+        const reserve0 = parseFloat(pair.reserve0);
+        const reserve1 = parseFloat(pair.reserve1);
+
+        if (reserve0 > 0 && reserve1 > 0) {
+          token1PriceUSD = (token0PriceUSD * reserve0) / reserve1;
+          console.log(`Derived token1 (${pair.token1.symbol}) price from pair ratio: $${token1PriceUSD}`);
+        }
+      }
+
+      // Calculate the reserves in USD
+      const reserve0 = parseFloat(pair.reserve0);
+      const reserve1 = parseFloat(pair.reserve1);
+
+      const reserve0USD = reserve0 * token0PriceUSD;
+      const reserve1USD = reserve1 * token1PriceUSD;
+
+      const totalReserveUSD = reserve0USD + reserve1USD;
+
+      // Calculate the reserves in KLC
+      const klcPrice = await this.getKLCPriceFromRouter();
+      const totalReserveKLC = klcPrice > 0 ? totalReserveUSD / klcPrice : 0;
+
+      console.log(`Calculated liquidity for pair ${pair.token0.symbol}/${pair.token1.symbol}:`, {
+        reserve0: reserve0,
+        reserve1: reserve1,
+        token0PriceUSD: token0PriceUSD,
+        token1PriceUSD: token1PriceUSD,
+        reserve0USD: reserve0USD,
+        reserve1USD: reserve1USD,
+        totalReserveUSD: totalReserveUSD,
+        totalReserveKLC: totalReserveKLC
+      });
+
+      return {
+        reserveUSD: totalReserveUSD.toString(),
+        reserveKLC: totalReserveKLC.toString()
+      };
+    } catch (error: any) {
+      console.error(`Error calculating liquidity for pair ${pairAddress}:`, error.message || error);
+      return { reserveUSD: '0', reserveKLC: '0' };
+    }
+  },
+
+  // Calculate total liquidity from all pairs
+  async calculateTotalLiquidity() {
+    try {
+      console.log('Calculating total liquidity from all pairs...');
+
+      // Get all pairs from the subgraph
+      const allPairs = await this.getPairs(100); // Get up to 100 pairs
+
+      if (!allPairs || allPairs.length === 0) {
+        console.log('No pairs found, cannot calculate total liquidity');
+        return { totalLiquidityUSD: '0', totalLiquidityKLC: '0' };
+      }
+
+      console.log(`Found ${allPairs.length} pairs to calculate liquidity`);
+
+      let totalLiquidityUSD = 0;
+      let totalLiquidityKLC = 0;
+
+      // Calculate liquidity for each pair
+      for (const pair of allPairs) {
+        try {
+          // Log detailed pair data for debugging
+          console.log(`Detailed pair data for ${pair.token0.symbol}/${pair.token1.symbol}:`, {
+            id: pair.id,
+            token0: {
+              symbol: pair.token0.symbol,
+              derivedKLC: pair.token0.derivedKLC,
+              decimals: pair.token0.decimals
+            },
+            token1: {
+              symbol: pair.token1.symbol,
+              derivedKLC: pair.token1.derivedKLC,
+              decimals: pair.token1.decimals
+            },
+            reserve0: pair.reserve0,
+            reserve1: pair.reserve1,
+            reserveUSD: pair.reserveUSD,
+            reserveKLC: pair.reserveKLC,
+            token0Price: pair.token0Price,
+            token1Price: pair.token1Price
+          });
+
+          // Calculate the reserves in USD manually to verify
+          const reserve0 = parseFloat(pair.reserve0);
+          const reserve1 = parseFloat(pair.reserve1);
+
+          // Get KLC price from the router
+          const routerKLCPrice = await this.getKLCPriceFromRouter();
+
+          // Special handling for WKLC/USDT pair
+          if ((pair.token0.symbol === 'WKLC' && pair.token1.symbol === 'USDT') ||
+              (pair.token1.symbol === 'WKLC' && pair.token0.symbol === 'USDT')) {
+            console.log('Special handling for WKLC/USDT pair in calculateTotalLiquidity');
+
+            // Determine which token is WKLC and which is USDT
+            let wklcReserve, usdtReserve;
+            if (pair.token0.symbol === 'WKLC') {
+              wklcReserve = reserve0;
+              usdtReserve = reserve1;
+              console.log(`WKLC is token0, reserve: ${wklcReserve}`);
+              console.log(`USDT is token1, reserve: ${usdtReserve}`);
+            } else {
+              wklcReserve = reserve1;
+              usdtReserve = reserve0;
+              console.log(`WKLC is token1, reserve: ${wklcReserve}`);
+              console.log(`USDT is token0, reserve: ${usdtReserve}`);
+            }
+
+            // Calculate USD values
+            const wklcValueUSD = wklcReserve * routerKLCPrice;
+            const usdtValueUSD = usdtReserve; // USDT is 1:1 with USD
+
+            console.log(`WKLC value in USD: $${wklcValueUSD.toFixed(2)}`);
+            console.log(`USDT value in USD: $${usdtValueUSD.toFixed(2)}`);
+
+            const manualReserveUSD = wklcValueUSD + usdtValueUSD;
+            console.log(`Total reserve in USD: $${manualReserveUSD.toFixed(2)}`);
+
+            // Calculate reserves in KLC
+            const manualReserveKLC = routerKLCPrice > 0 ? manualReserveUSD / routerKLCPrice : 0;
+
+            console.log(`Manual calculation for ${pair.token0.symbol}/${pair.token1.symbol}:`, {
+              reserve0: reserve0,
+              reserve1: reserve1,
+              token0DerivedKLC: parseFloat(pair.token0.derivedKLC || '0'),
+              token1DerivedKLC: parseFloat(pair.token1.derivedKLC || '0'),
+              routerKLCPrice: routerKLCPrice,
+              manualReserveKLC: manualReserveKLC,
+              manualReserveUSD: manualReserveUSD,
+              subgraphReserveUSD: parseFloat(pair.reserveUSD || '0')
+            });
+
+            // Use our manually calculated reserveUSD instead of the subgraph value
+            const pairLiquidityUSD = manualReserveUSD;
+            totalLiquidityUSD += pairLiquidityUSD;
+
+            // Calculate KLC equivalent
+            totalLiquidityKLC += manualReserveKLC;
+
+            console.log(`Pair ${pair.token0.symbol}/${pair.token1.symbol}: calculated reserveUSD = ${pairLiquidityUSD.toFixed(2)} (subgraph value: ${parseFloat(pair.reserveUSD || '0').toFixed(2)})`);
+
+            continue; // Skip the rest of the loop for this pair
+          }
+
+          // Special handling for stablecoins
+          let reserve0USD = 0;
+          let reserve1USD = 0;
+
+          // Check if token0 is a stablecoin
+          if (pair.token0.symbol === 'USDT' || pair.token0.symbol === 'USDC' || pair.token0.symbol === 'DAI') {
+            reserve0USD = reserve0; // 1:1 with USD
+            console.log(`Token0 (${pair.token0.symbol}) is a stablecoin, using direct USD value: $${reserve0USD}`);
+          } else {
+            const token0DerivedKLC = parseFloat(pair.token0.derivedKLC || '0');
+            reserve0USD = reserve0 * token0DerivedKLC * routerKLCPrice;
+          }
+
+          // Check if token1 is a stablecoin
+          if (pair.token1.symbol === 'USDT' || pair.token1.symbol === 'USDC' || pair.token1.symbol === 'DAI') {
+            reserve1USD = reserve1; // 1:1 with USD
+            console.log(`Token1 (${pair.token1.symbol}) is a stablecoin, using direct USD value: $${reserve1USD}`);
+          } else {
+            const token1DerivedKLC = parseFloat(pair.token1.derivedKLC || '0');
+            reserve1USD = reserve1 * token1DerivedKLC * routerKLCPrice;
+          }
+
+          // Calculate total reserves in USD
+          const manualReserveUSD = reserve0USD + reserve1USD;
+
+          // Calculate reserves in KLC
+          const manualReserveKLC = routerKLCPrice > 0 ? manualReserveUSD / routerKLCPrice : 0;
+
+          console.log(`Manual calculation for ${pair.token0.symbol}/${pair.token1.symbol}:`, {
+            reserve0: reserve0,
+            reserve1: reserve1,
+            token0DerivedKLC: parseFloat(pair.token0.derivedKLC || '0'),
+            token1DerivedKLC: parseFloat(pair.token1.derivedKLC || '0'),
+            routerKLCPrice: routerKLCPrice,
+            manualReserveKLC: manualReserveKLC,
+            manualReserveUSD: manualReserveUSD,
+            subgraphReserveUSD: parseFloat(pair.reserveUSD || '0')
+          });
+
+          // Use our manually calculated reserveUSD instead of the subgraph value
+          const pairLiquidityUSD = manualReserveUSD;
+          totalLiquidityUSD += pairLiquidityUSD;
+
+          // Calculate KLC equivalent
+          totalLiquidityKLC += manualReserveKLC;
+
+          console.log(`Pair ${pair.token0.symbol}/${pair.token1.symbol}: calculated reserveUSD = ${pairLiquidityUSD.toFixed(2)} (subgraph value: ${parseFloat(pair.reserveUSD || '0').toFixed(2)})`);
+        } catch (error: any) {
+          console.error(`Error calculating liquidity for pair ${pair.token0?.symbol || 'unknown'}/${pair.token1?.symbol || 'unknown'}:`, error.message || error);
+        }
+      }
+
+      console.log(`Total calculated liquidity: $${totalLiquidityUSD.toFixed(2)} (${totalLiquidityKLC.toFixed(2)} KLC)`);
+
+      return {
+        totalLiquidityUSD: totalLiquidityUSD.toString(),
+        totalLiquidityKLC: totalLiquidityKLC.toString()
+      };
+    } catch (error: any) {
+      console.error('Error calculating total liquidity:', error.message || error);
+      return { totalLiquidityUSD: '0', totalLiquidityKLC: '0' };
+    }
+  },
+
   // Get DEX overview data for dashboard
   async getDexOverview() {
     try {
+      // Get data from subgraph
       const [factory, dayData, pairs] = await Promise.all([
         this.getFactory(),
         this.getDexDayData(1),
-        this.getPairs(5)
+        this.getPairs(100) // Fetch more pairs to get a more accurate total liquidity
       ]);
 
-      return {
-        factory,
-        dayData: dayData[0],
-        topPairs: pairs
+      // First try to get KLC price from the subgraph
+      let klcPrice = await this.getKLCPriceFromSubgraph();
+      console.log(`KLC price: $${klcPrice}`);
+
+      // Calculate total liquidity from pairs
+      let totalLiquidityUSD = 0;
+      let totalLiquidityKLC = 0;
+
+      // Log the pairs data for debugging
+      console.log(`Calculating total liquidity from ${pairs.length} pairs...`);
+
+      // Create a factory object if it doesn't exist
+      const factoryData = factory || {
+        id: FACTORY_ADDRESS.toLowerCase(),
+        address: FACTORY_ADDRESS,
+        pairCount: '0',
+        totalVolumeUSD: '0',
+        totalVolumeKLC: '0',
+        totalLiquidityUSD: '0',
+        totalLiquidityKLC: '0',
+        txCount: '0'
       };
-    } catch (error) {
-      console.error('Error fetching DEX overview:', error);
-      return null;
+
+      // Update factory data with calculated liquidity
+      console.log('Factory data before updating liquidity:', {
+        totalLiquidityUSD: factoryData.totalLiquidityUSD,
+        totalLiquidityKLC: factoryData.totalLiquidityKLC
+      });
+
+      // Update the reserveUSD values for each pair using the router contract
+      const updatedPairs = await Promise.all(pairs.map(async (pair: any) => {
+        try {
+          // Calculate the reserves in USD manually
+          const reserve0 = parseFloat(pair.reserve0);
+          const reserve1 = parseFloat(pair.reserve1);
+
+          // Special handling for WKLC/USDT pair
+          if ((pair.token0.symbol === 'WKLC' && pair.token1.symbol === 'USDT') ||
+              (pair.token1.symbol === 'WKLC' && pair.token0.symbol === 'USDT')) {
+            console.log('Special handling for WKLC/USDT pair in getDexOverview');
+
+            // Determine which token is WKLC and which is USDT
+            let wklcReserve, usdtReserve;
+            if (pair.token0.symbol === 'WKLC') {
+              wklcReserve = reserve0;
+              usdtReserve = reserve1;
+              console.log(`WKLC is token0, reserve: ${wklcReserve}`);
+              console.log(`USDT is token1, reserve: ${usdtReserve}`);
+            } else {
+              wklcReserve = reserve1;
+              usdtReserve = reserve0;
+              console.log(`WKLC is token1, reserve: ${wklcReserve}`);
+              console.log(`USDT is token0, reserve: ${usdtReserve}`);
+            }
+
+            // Calculate USD values
+            const wklcValueUSD = wklcReserve * klcPrice;
+            const usdtValueUSD = usdtReserve; // USDT is 1:1 with USD
+
+            console.log(`WKLC value in USD: $${wklcValueUSD.toFixed(2)}`);
+            console.log(`USDT value in USD: $${usdtValueUSD.toFixed(2)}`);
+
+            const reserveUSD = wklcValueUSD + usdtValueUSD;
+            console.log(`Total reserve in USD: $${reserveUSD.toFixed(2)}`);
+
+            // Calculate reserves in KLC
+            const reserveKLC = klcPrice > 0 ? reserveUSD / klcPrice : 0;
+
+            console.log(`Calculated liquidity for ${pair.token0.symbol}/${pair.token1.symbol}: $${reserveUSD.toFixed(2)}`);
+
+            // Add to total liquidity
+            totalLiquidityUSD += reserveUSD;
+            totalLiquidityKLC += reserveKLC;
+
+            // Return updated pair with calculated reserveUSD
+            return {
+              ...pair,
+              reserveUSD: reserveUSD.toString(),
+              reserveKLC: reserveKLC.toString()
+            };
+          }
+
+          // Special handling for stablecoins
+          let reserve0USD = 0;
+          let reserve1USD = 0;
+
+          // Check if token0 is a stablecoin
+          if (pair.token0.symbol === 'USDT' || pair.token0.symbol === 'USDC' || pair.token0.symbol === 'DAI') {
+            reserve0USD = reserve0; // 1:1 with USD
+            console.log(`Token0 (${pair.token0.symbol}) is a stablecoin, using direct USD value: $${reserve0USD}`);
+          } else {
+            const token0DerivedKLC = parseFloat(pair.token0.derivedKLC || '0');
+            reserve0USD = reserve0 * token0DerivedKLC * klcPrice;
+          }
+
+          // Check if token1 is a stablecoin
+          if (pair.token1.symbol === 'USDT' || pair.token1.symbol === 'USDC' || pair.token1.symbol === 'DAI') {
+            reserve1USD = reserve1; // 1:1 with USD
+            console.log(`Token1 (${pair.token1.symbol}) is a stablecoin, using direct USD value: $${reserve1USD}`);
+          } else {
+            const token1DerivedKLC = parseFloat(pair.token1.derivedKLC || '0');
+            reserve1USD = reserve1 * token1DerivedKLC * klcPrice;
+          }
+
+          // Calculate total reserves in USD
+          const reserveUSD = reserve0USD + reserve1USD;
+
+          // Calculate reserves in KLC
+          const reserveKLC = klcPrice > 0 ? reserveUSD / klcPrice : 0;
+
+          console.log(`Calculated liquidity for ${pair.token0.symbol}/${pair.token1.symbol}: $${reserveUSD.toFixed(2)}`);
+
+          // Add to total liquidity
+          totalLiquidityUSD += reserveUSD;
+          totalLiquidityKLC += reserveKLC;
+
+          // Return updated pair with calculated reserveUSD
+          return {
+            ...pair,
+            reserveUSD: reserveUSD.toString(),
+            reserveKLC: reserveKLC.toString()
+          };
+        } catch (error: any) {
+          console.error(`Error calculating liquidity for pair ${pair.token0?.symbol || 'unknown'}/${pair.token1?.symbol || 'unknown'}:`, error.message || error);
+          return pair;
+        }
+      }));
+
+      console.log(`Total calculated liquidity: $${totalLiquidityUSD.toFixed(2)} (${totalLiquidityKLC.toFixed(2)} KLC)`);
+
+      // Update with our calculated values
+      factoryData.totalLiquidityUSD = totalLiquidityUSD.toString();
+      factoryData.totalLiquidityKLC = totalLiquidityKLC.toString();
+
+      console.log('Factory data after updating liquidity:', {
+        totalLiquidityUSD: factoryData.totalLiquidityUSD,
+        totalLiquidityKLC: factoryData.totalLiquidityKLC
+      });
+
+      // Create overview object
+      const overview = {
+        factory: factoryData,
+        dayData: dayData && dayData.length > 0 ? dayData[0] : null,
+        topPairs: updatedPairs,
+        klcPrice
+      };
+
+      console.log('DEX overview data:', JSON.stringify({
+        factoryId: overview.factory?.id,
+        totalLiquidityUSD: overview.factory?.totalLiquidityUSD,
+        totalLiquidityKLC: overview.factory?.totalLiquidityKLC,
+        pairCount: overview.factory?.pairCount,
+        klcPrice: overview.klcPrice
+      }, null, 2));
+
+      return overview;
+    } catch (error: any) {
+      console.error('Error fetching DEX overview:', error.message || error);
+      return {
+        factory: {
+          id: FACTORY_ADDRESS.toLowerCase(),
+          address: FACTORY_ADDRESS,
+          pairCount: '0',
+          totalVolumeUSD: '0',
+          totalVolumeKLC: '0',
+          totalLiquidityUSD: '0',
+          totalLiquidityKLC: '0',
+          txCount: '0'
+        },
+        dayData: null,
+        topPairs: [],
+        klcPrice: 0.001221
+      };
     }
   }
 };
