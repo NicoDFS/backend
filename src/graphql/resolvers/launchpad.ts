@@ -7,6 +7,9 @@ export const launchpadResolvers = {
     },
     launchpadProject: async (_: any, { id }: { id: string }, { launchpadService }: Context) => {
       return launchpadService.getLaunchpadProject(id);
+    },
+    launchpadOverview: async (_: any, __: any, { launchpadService }: Context) => {
+      return launchpadService.getLaunchpadOverview();
     }
   }
 };

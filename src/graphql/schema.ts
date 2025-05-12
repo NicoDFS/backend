@@ -212,6 +212,38 @@ const typeDefs = gql`
     routes: [WarpRoute!]!
   }
 
+  type LaunchpadFactoryFees {
+    tokenFactory: String!
+    presaleFactory: String!
+    fairlaunchFactory: String!
+  }
+
+  type LaunchpadOverview {
+    totalProjects: Int!
+    activeProjects: Int!
+    totalFundsRaised: String!
+    totalParticipants: Int!
+    totalFeesCollected: String!
+    factoryFees: LaunchpadFactoryFees!
+    recentProjects: [LaunchpadProject!]!
+  }
+
+  type LaunchpadFactoryFees {
+    tokenFactory: String!
+    presaleFactory: String!
+    fairlaunchFactory: String!
+  }
+
+  type LaunchpadOverview {
+    totalProjects: Int!
+    activeProjects: Int!
+    totalFundsRaised: String!
+    totalParticipants: Int!
+    totalFeesCollected: String!
+    factoryFees: LaunchpadFactoryFees!
+    recentProjects: [LaunchpadProject!]!
+  }
+
   type LaunchpadProject {
     id: ID!
     name: String!
@@ -311,6 +343,7 @@ const typeDefs = gql`
     # Launchpad queries
     launchpadProjects: [LaunchpadProject!]!
     launchpadProject(id: ID!): LaunchpadProject
+    launchpadOverview: LaunchpadOverview
 
     # Staking queries
     stakingPools: [StakingPool!]!
