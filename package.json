@@ -6,30 +6,42 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@graphql-tools/schema": "^10.0.23",
+    "@prisma/client": "^6.8.2",
     "apollo-server-core": "^3.13.0",
     "apollo-server-micro": "^3.13.0",
     "axios": "^1.9.0",
+    "bcryptjs": "^2.4.3",
+    "crypto": "^1.0.1",
     "ethers": "^5.7.2",
     "graphql": "^16.10.0",
     "graphql-request": "^7.1.2",
+    "jsonwebtoken": "^9.0.2",
     "micro-cors": "^0.1.1",
     "next": "15.3.1",
     "nodemailer": "^6.10.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/uuid": "^9.0.8",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
+    "prisma": "^6.8.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

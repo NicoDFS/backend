@@ -4,6 +4,8 @@ import { LaunchpadService } from '../../services/launchpad';
 import { StakingService } from '../../services/staking';
 import { MonitoringService } from '../../services/monitoring';
 import { HyperlaneApiService } from '../../services/bridge/hyperlane-api';
+import { userService } from '../../services/user/userService';
+import { walletService } from '../../services/user/walletService';
 
 export type Context = {
   dexService: typeof DexService;
@@ -12,9 +14,12 @@ export type Context = {
   stakingService: typeof StakingService;
   monitoringService: typeof MonitoringService;
   hyperlaneApiService: typeof HyperlaneApiService;
+  userService: typeof userService;
+  walletService: typeof walletService;
+  req?: any;
 };
 
-export async function createContext(): Promise<Context> {
+export async function createContext({ req }: { req?: any } = {}): Promise<Context> {
   return {
     dexService: DexService,
     bridgeService: BridgeService,
@@ -22,5 +27,8 @@ export async function createContext(): Promise<Context> {
     stakingService: StakingService,
     monitoringService: MonitoringService,
     hyperlaneApiService: HyperlaneApiService,
+    userService,
+    walletService,
+    req,
   };
 }

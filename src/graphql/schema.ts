@@ -5,6 +5,7 @@ import { bridgeResolvers } from './resolvers/bridge';
 import { launchpadResolvers } from './resolvers/launchpad';
 import { stakingResolvers } from './resolvers/staking';
 import { monitoringResolvers } from './resolvers/monitoring';
+import { userResolvers } from './resolvers/user';
 
 const typeDefs = gql`
   type Token {
@@ -320,6 +321,80 @@ const typeDefs = gql`
     validators: ValidatorsMonitoring!
   }
 
+  # User and Wallet types
+  type User {
+    id: ID!
+    username: String!
+    email: String
+    createdAt: String!
+    updatedAt: String!
+    wallets: [Wallet!]!
+    transactions(limit: Int, offset: Int): [Transaction!]!
+  }
+
+  type Wallet {
+    id: ID!
+    address: String!
+    chainId: Int!
+    createdAt: String!
+    updatedAt: String!
+    balance: WalletBalance
+    transactions(limit: Int, offset: Int): [Transaction!]!
+  }
+
+  type WalletBalance {
+    klc: String!
+    tokens: [TokenBalance!]!
+  }
+
+  type TokenBalance {
+    symbol: String!
+    balance: String!
+  }
+
+  type Transaction {
+    id: ID!
+    type: TransactionType!
+    status: TransactionStatus!
+    hash: String
+    fromAddress: String!
+    toAddress: String
+    amount: String!
+    tokenAddress: String
+    tokenSymbol: String
+    tokenDecimals: Int
+    fee: String
+    blockNumber: Int
+    timestamp: String!
+  }
+
+  enum TransactionType {
+    SEND
+    RECEIVE
+    SWAP
+    STAKE
+    UNSTAKE
+    CLAIM_REWARD
+    PROVIDE_LIQUIDITY
+    REMOVE_LIQUIDITY
+  }
+
+  enum TransactionStatus {
+    PENDING
+    CONFIRMED
+    FAILED
+  }
+
+  type AuthResponse {
+    token: String!
+    user: User!
+  }
+
+  type ExportWalletResponse {
+    keystore: String!
+    privateKey: String
+  }
+
   type Query {
     # DEX queries
     dexOverview: DexOverview
@@ -368,6 +443,46 @@ const typeDefs = gql`
     validatorMetrics(chain: String!): MessageProcessingMetrics!
     validatorsMetrics: ValidatorsMonitoring
     fullMonitoringData: FullMonitoringData!
+
+    # User queries
+    me: User
+    user(id: ID!): User
+    userByUsername(username: String!): User
+    wallet(address: String!): Wallet
+    walletBalance(address: String!): WalletBalance
+    exportWallet(walletId: ID!, password: String!): ExportWalletResponse
+    userTransactions(limit: Int, offset: Int): [Transaction!]!
+    walletTransactions(walletId: ID!, limit: Int, offset: Int): [Transaction!]!
+
+    # Admin queries
+    allUsers: [User!]!
+    allWallets: [Wallet!]!
+  }
+
+  type Mutation {
+    # User mutations
+    register(username: String!, email: String, password: String!): AuthResponse!
+    login(username: String!, password: String!): AuthResponse!
+    createWallet(password: String!): Wallet!
+    importWallet(privateKey: String!, password: String!): Wallet!
+
+    # Transaction mutations
+    trackSendTransaction(
+      walletId: ID!,
+      hash: String!,
+      toAddress: String!,
+      amount: String!,
+      tokenAddress: String,
+      tokenSymbol: String,
+      tokenDecimals: Int,
+      fee: String
+    ): Transaction!
+
+    updateTransactionStatus(
+      hash: String!,
+      status: String!,
+      blockNumber: Int
+    ): Transaction!
   }
 `;
 
@@ -379,5 +494,6 @@ export const schema = makeExecutableSchema({
     launchpadResolvers,
     stakingResolvers,
     monitoringResolvers,
+    userResolvers,
   ],
 });
