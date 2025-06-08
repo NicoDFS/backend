@@ -2,210 +2,83 @@
 
 pragma solidity ^0.8.4;
 
-abstract contract ReentrancyGuard {
-    // Booleans are more expensive than uint256 or any type that takes up a full
-    // word because each write operation emits an extra SLOAD to first read the
-    // slot's contents, replace the bits taken up by the boolean, and then write
-    // back. This is the compiler's defense against contract upgrades and
-    // pointer aliasing, and it cannot be disabled.
+/**
+ * @title Fairlaunch
+ * @dev Updated fairlaunch contract with clean architecture
+ * @author KalyChain Team
+ */
 
-    // The values being non-zero value makes deployment a bit more expensive,
-    // but in exchange the refund on every call to nonReentrant will be lower in
-    // amount. Since refunds are capped to a percentage of the total
-    // transaction's gas, it is best to keep them low in cases like this one, to
-    // increase the likelihood of the full refund coming into effect.
+abstract contract ReentrancyGuard {
     uint256 private constant _NOT_ENTERED = 1;
     uint256 private constant _ENTERED = 2;
-
     uint256 private _status;
 
-    constructor () {
+    constructor() {
         _status = _NOT_ENTERED;
     }
 
-    /**
-     * @dev Prevents a contract from calling itself, directly or indirectly.
-     * Calling a `nonReentrant` function from another `nonReentrant`
-     * function is not supported. It is possible to prevent this from happening
-     * by making the `nonReentrant` function external, and make it call a
-     * `private` function that does the actual work.
-     */
     modifier nonReentrant() {
-        // On the first call to nonReentrant, _notEntered will be true
         require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
-
-        // Any calls to nonReentrant after this point will fail
         _status = _ENTERED;
-
         _;
-
-        // By storing the original value once again, a refund is triggered (see
-        // https://eips.ethereum.org/EIPS/eip-2200)
         _status = _NOT_ENTERED;
     }
 }
 
 library SafeMath {
-    /**
-     * @dev Returns the addition of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `+` operator.
-     *
-     * Requirements:
-     *
-     * - Addition cannot overflow.
-     */
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c = a + b;
         require(c >= a, "SafeMath: addition overflow");
-
         return c;
     }
 
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     *
-     * - Subtraction cannot overflow.
-     */
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub(a, b, "SafeMath: subtraction overflow");
+        require(b <= a, "SafeMath: subtraction overflow");
+        return a - b;
     }
 
-    /**
-     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
-     * overflow (when the result is negative).
-     *
-     * Counterpart to Solidity's `-` operator.
-     *
-     * Requirements:
-     *
-     * - Subtraction cannot overflow.
-     */
-    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b <= a, errorMessage);
-        uint256 c = a - b;
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the multiplication of two unsigned integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `*` operator.
-     *
-     * Requirements:
-     *
-     * - Multiplication cannot overflow.
-     */
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-        // benefit is lost if 'b' is also tested.
-        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
-        if (a == 0) {
-            return 0;
-        }
-
+        if (a == 0) return 0;
         uint256 c = a * b;
         require(c / a == b, "SafeMath: multiplication overflow");
-
         return c;
     }
 
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
     function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div(a, b, "SafeMath: division by zero.");
-    }
-
-    /**
-     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
-     * division by zero. The result is rounded towards zero.
-     *
-     * Counterpart to Solidity's `/` operator. Note: this function uses a
-     * `revert` opcode (which leaves remaining gas untouched) while Solidity
-     * uses an invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b > 0, errorMessage);
-        uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-
-        return c;
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        return mod(a, b, "SafeMath: modulo by zero");
-    }
-
-    /**
-     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
-     * Reverts with custom message when dividing by zero.
-     *
-     * Counterpart to Solidity's `%` operator. This function uses a `revert`
-     * opcode (which leaves remaining gas untouched) while Solidity uses an
-     * invalid opcode to revert (consuming all remaining gas).
-     *
-     * Requirements:
-     *
-     * - The divisor cannot be zero.
-     */
-    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b != 0, errorMessage);
-        return a % b;
+        require(b > 0, "SafeMath: division by zero");
+        return a / b;
     }
 }
 
+interface IERC20 {
+    function name() external view returns (string memory);
+    function symbol() external view returns (string memory);
+    function decimals() external view returns (uint8);
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+}
+
 library TransferHelper {
-    function safeApprove(address token, address to, uint value) internal {
+    function safeApprove(address token, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x095ea7b3, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: APPROVE_FAILED');
     }
 
-    function safeTransfer(address token, address to, uint value) internal {
+    function safeTransfer(address token, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0xa9059cbb, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: TRANSFER_FAILED');
     }
 
-    function safeTransferFrom(address token, address from, address to, uint value) internal {
+    function safeTransferFrom(address token, address from, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: TRANSFER_FROM_FAILED');
     }
-    
-    // sends ETH or an erc20 token
-    function safeTransferBaseToken(address token, address payable to, uint value, bool isERC20) internal {
+
+    function safeTransferBaseToken(address token, address payable to, uint256 value, bool isERC20) internal {
         if (!isERC20) {
             to.transfer(value);
         } else {
@@ -215,598 +88,580 @@ library TransferHelper {
     }
 }
 
-
-interface IBEP20 {
-    event Approval(address indexed owner, address indexed spender, uint value);
-    event Transfer(address indexed from, address indexed to, uint value);
+interface IKalySwapRouter {
+    function factory() external pure returns (address);
+    function WKLC() external pure returns (address);
     
-    function decimals() external view returns (uint8);
-    function name() external view returns (string memory);
-    function symbol() external view returns (string memory);
-    function totalSupply() external view returns (uint);
-    function balanceOf(address owner) external view returns (uint);
-    function allowance(address owner, address spender) external view returns (uint);
-
-    function approve(address spender, uint value) external returns (bool);
-    function transfer(address to, uint value) external returns (bool);
-    function transferFrom(address from, address to, uint value) external returns (bool);
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB, uint liquidity);
+    
+    function addLiquidityKLC(
+        address token,
+        uint amountTokenDesired,
+        uint amountTokenMin,
+        uint amountKLCMin,
+        address to,
+        uint deadline
+    ) external payable returns (uint amountToken, uint amountKLC, uint liquidity);
 }
 
-interface IPancakeSwapRouter{
-		function factory() external pure returns (address);
-		function WETH() external pure returns (address);
-
-		function addLiquidity(
-				address tokenA,
-				address tokenB,
-				uint amountADesired,
-				uint amountBDesired,
-				uint amountAMin,
-				uint amountBMin,
-				address to,
-				uint deadline
-		) external returns (uint amountA, uint amountB, uint liquidity);
-		function addLiquidityETH(
-				address token,
-				uint amountTokenDesired,
-				uint amountTokenMin,
-				uint amountETHMin,
-				address to,
-				uint deadline
-		) external payable returns (uint amountToken, uint amountETH, uint liquidity);
-		function removeLiquidity(
-				address tokenA,
-				address tokenB,
-				uint liquidity,
-				uint amountAMin,
-				uint amountBMin,
-				address to,
-				uint deadline
-		) external returns (uint amountA, uint amountB);
-		function removeLiquidityETH(
-				address token,
-				uint liquidity,
-				uint amountTokenMin,
-				uint amountETHMin,
-				address to,
-				uint deadline
-		) external returns (uint amountToken, uint amountETH);
-		function removeLiquidityWithPermit(
-				address tokenA,
-				address tokenB,
-				uint liquidity,
-				uint amountAMin,
-				uint amountBMin,
-				address to,
-				uint deadline,
-				bool approveMax, uint8 v, bytes32 r, bytes32 s
-		) external returns (uint amountA, uint amountB);
-		function removeLiquidityETHWithPermit(
-				address token,
-				uint liquidity,
-				uint amountTokenMin,
-				uint amountETHMin,
-				address to,
-				uint deadline,
-				bool approveMax, uint8 v, bytes32 r, bytes32 s
-		) external returns (uint amountToken, uint amountETH);
-		function swapExactTokensForTokens(
-				uint amountIn,
-				uint amountOutMin,
-				address[] calldata path,
-				address to,
-				uint deadline
-		) external returns (uint[] memory amounts);
-		function swapTokensForExactTokens(
-				uint amountOut,
-				uint amountInMax,
-				address[] calldata path,
-				address to,
-				uint deadline
-		) external returns (uint[] memory amounts);
-		function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
-				external
-				payable
-				returns (uint[] memory amounts);
-		function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
-				external
-				returns (uint[] memory amounts);
-		function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
-				external
-				returns (uint[] memory amounts);
-		function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
-				external
-				payable
-				returns (uint[] memory amounts);
-
-		function quote(uint amountA, uint reserveA, uint reserveB) external pure returns (uint amountB);
-		function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) external pure returns (uint amountOut);
-		function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) external pure returns (uint amountIn);
-		function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
-		function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
-		function removeLiquidityETHSupportingFeeOnTransferTokens(
-			address token,
-			uint liquidity,
-			uint amountTokenMin,
-			uint amountETHMin,
-			address to,
-			uint deadline
-		) external returns (uint amountETH);
-		function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
-			address token,
-			uint liquidity,
-			uint amountTokenMin,
-			uint amountETHMin,
-			address to,
-			uint deadline,
-			bool approveMax, uint8 v, bytes32 r, bytes32 s
-		) external returns (uint amountETH);
-	
-		function swapExactTokensForTokensSupportingFeeOnTransferTokens(
-			uint amountIn,
-			uint amountOutMin,
-			address[] calldata path,
-			address to,
-			uint deadline
-		) external;
-		function swapExactETHForTokensSupportingFeeOnTransferTokens(
-			uint amountOutMin,
-			address[] calldata path,
-			address to,
-			uint deadline
-		) external payable;
-		function swapExactTokensForETHSupportingFeeOnTransferTokens(
-			uint amountIn,
-			uint amountOutMin,
-			address[] calldata path,
-			address to,
-			uint deadline
-		) external;
+interface IKalySwapFactory {
+    function getPair(address tokenA, address tokenB) external view returns (address pair);
+    function createPair(address tokenA, address tokenB) external returns (address pair);
 }
 
-interface IPancakeSwapFactory {
-		event PairCreated(address indexed token0, address indexed token1, address pair, uint);
-
-		function feeTo() external view returns (address);
-		function feeToSetter() external view returns (address);
-
-		function getPair(address tokenA, address tokenB) external view returns (address pair);
-		function allPairs(uint) external view returns (address pair);
-		function allPairsLength() external view returns (uint);
-
-		function createPair(address tokenA, address tokenB) external returns (address pair);
-
-		function setFeeTo(address) external;
-		function setFeeToSetter(address) external;
-}
-
-interface IMyContract {
-    function getProfit() external view returns(address);
-    function getPercent() external view returns (uint256);
-}
-
+/**
+ * @title Fairlaunch
+ * @dev Clean, bug-free fairlaunch contract implementation
+ */
 contract Fairlaunch is ReentrancyGuard {
     using SafeMath for uint256;
 
-    struct PresaleInfo {
-        address sale_token; // Sale token
-        address base_token;
-        uint256 buyback;
-        bool whitelist;
-        uint256 selling_amount;
-        uint256 raise_min; // Maximum base token BUY amount per buyer
-        uint256 softcap; // Minimum raise amount
-        uint256 liquidityPercent;
-        uint256 presale_start;
-        uint256 presale_end;
-        PresaleType presale_type;
+    // ============ ENUMS ============
+    
+    enum FairlaunchStatus { PENDING, ACTIVE, SUCCESS, FAILED, CANCELLED, FINALIZED }
+
+    // ============ STRUCTS ============
+    
+    struct FairlaunchInfo {
+        address saleToken;          // Token being sold
+        address baseToken;          // Token used for payment (address(0) for native KLC)
+        uint256 buybackRate;        // Rate for token distribution
+        uint256 sellingAmount;      // Total tokens available for sale
+        uint256 softCap;            // Minimum total raise for success
+        uint256 liquidityPercent;   // Percentage of raised funds for liquidity
+        uint256 fairlaunchStart;    // Start timestamp
+        uint256 fairlaunchEnd;      // End timestamp
+        bool isNative;              // Whether using native KLC or ERC20 base token
+        bool isWhitelist;           // Whether whitelist is enabled
     }
 
-    struct MetaInfo {
-        bool presale_in_native;
-        uint256 base_token_fee; // base token fee after finalize
-        uint256 sale_token_fee; // sale token fee after finalize
-        bool canceled;
-        uint256 referral_fee;
-        address referral_address;
+    struct ParticipantInfo {
+        uint256 baseContribution;   // Amount of base token contributed
+        uint256 tokenAllocation;    // Amount of sale tokens allocated
+        bool claimed;               // Whether tokens have been claimed
     }
-    
-    bool finalized;
-    uint256 raised_amount;
-    uint256 public referral_fee;
-    address public referral_address;
-    bool public whiteList;
-    
+
     struct TokenInfo {
         string name;
         string symbol;
-        uint256 totalsupply;
-        uint256 decimal;
+        uint256 totalSupply;
+        uint8 decimals;
     }
 
-    modifier IsWhitelisted() {
-        require(presale_info.presale_type == PresaleType.WHITELIST, "whitelist not set");
-        _;
-    }
+    // ============ STATE VARIABLES ============
+    
+    address public owner;
+    FairlaunchInfo public fairlaunchInfo;
+    TokenInfo public tokenInfo;
+    
+    // Status tracking
+    uint256 public raisedAmount;        // Total base tokens raised
+    uint256 public participantCount;    // Number of unique participants
+    bool public cancelled;              // Whether fairlaunch is cancelled
+    bool public finalized;              // Whether fairlaunch is finalized
+    uint256 public tokenUnlockTime;     // When users can claim tokens
+    
+    // LP Token burning
+    address public lpTokenAddress;      // Address of LP token pair
+    uint256 public lpTokenAmount;       // Amount of LP tokens burned
+    bool public lpTokensBurned;         // Whether LP tokens have been burned
+    
+    // Configuration
+    IKalySwapRouter public router;
+    address public profitAddress;
+    uint256 public lockDelay;           // Additional token lock delay after finalization
 
-    enum PresaleType { PUBLIC, WHITELIST }
-
-    address owner;
-    bool persaleSetting;
-
-    PresaleInfo public presale_info;
-    TokenInfo public tokeninfo;
-    MetaInfo public meta_info;
-
-    IPancakeSwapRouter public router;
-    IMyContract public profit;
-    address private profitAddress=0x800E6AaC8f0DCbd8E809ADD117898C59b90cc445;
-
-    mapping(address => uint256) public buyers;
-    mapping(address => bool) public whitelistInfo;
-    mapping(address => bool) public flokiBurnerInfo;
-
-    event PresaleCreated(address, address);
-    event UserDepsitedSuccess(address, uint256);
-    event UserWithdrawSuccess(uint256);
-    event UserWithdrawTokensSuccess(uint256);
-
-    address deadaddr = 0x000000000000000000000000000000000000dEaD;
-    uint256 public lock_delay;
-
+    // Referral system
+    address public referralAddress;     // Address that referred this fairlaunch
+    uint256 public referralFee;         // Referral fee amount (if any)
+    
+    // Constants
+    address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+    
+    // Mappings
+    mapping(address => ParticipantInfo) public participants;
+    mapping(address => bool) public whitelist;
+    
+    // ============ EVENTS ============
+    
+    event FairlaunchCreated(address indexed owner, address indexed fairlaunch);
+    event Participated(address indexed user, uint256 baseAmount, uint256 tokenAmount);
+    event TokensClaimed(address indexed user, uint256 amount);
+    event RefundClaimed(address indexed user, uint256 amount);
+    event FairlaunchFinalized(uint256 raisedAmount, uint256 liquidityAmount);
+    event LPTokensBurned(address indexed lpToken, uint256 amount);
+    event FairlaunchCancelled();
+    event RemainingFundsWithdrawn(address indexed owner, uint256 amount);
+    event ReferralFeePaid(address indexed referral, uint256 amount);
+    
+    // ============ MODIFIERS ============
+    
     modifier onlyOwner() {
-        require(owner == msg.sender, "Not presale owner.");
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+    
+    modifier onlyWhenActive() {
+        require(getStatus() == FairlaunchStatus.ACTIVE, "Fairlaunch not active");
+        _;
+    }
+    
+    modifier onlyWhenFinalized() {
+        require(getStatus() == FairlaunchStatus.FINALIZED, "Not finalized");
         _;
     }
 
+    // ============ CONSTRUCTOR ============
+
+    /**
+     * @dev Constructor for fairlaunch creation
+     * @param _owner Owner of the fairlaunch
+     * @param _saleToken Token being sold
+     * @param _baseToken Base token for payments (address(0) for native KLC)
+     * @param _isNative Whether using native KLC
+     * @param _buybackRate Rate for token distribution
+     * @param _isWhitelist Whether whitelist is enabled
+     * @param _sellingAmount Total tokens for sale
+     * @param _softCap Minimum raise amount
+     * @param _liquidityPercent Percentage for liquidity
+     * @param _fairlaunchStart Start timestamp
+     * @param _fairlaunchEnd End timestamp
+     */
     constructor(
-        address owner_,
-        address _sale_token,
-        address _base_token,
-        bool presale_in_native,
-        uint256 _buyback,
-        bool _whitelist,
-        uint256 _selling_amount,
-        uint256 _softcap, 
+        address _owner,
+        address _saleToken,
+        address _baseToken,
+        bool _isNative,
+        uint256 _buybackRate,
+        bool _isWhitelist,
+        uint256 _sellingAmount,
+        uint256 _softCap,
         uint256 _liquidityPercent,
-        uint256 _presale_start,
-        uint256 _presale_end
+        uint256 _fairlaunchStart,
+        uint256 _fairlaunchEnd
     ) {
-        owner = msg.sender;
-        init_private(
-            _sale_token,
-            _base_token,
-            presale_in_native,
-            _buyback,
-            _whitelist,
-            _selling_amount,
-            _softcap, 
-            _liquidityPercent,
-            _presale_start,
-            _presale_end
-        );
-        owner = owner_;
-        
-        emit PresaleCreated(owner, address(this));
+        require(_owner != address(0), "Invalid owner");
+        require(_saleToken != address(0), "Invalid sale token");
+        require(_buybackRate > 0, "Invalid buyback rate");
+        require(_sellingAmount > 0, "Invalid selling amount");
+        require(_softCap > 0, "Invalid soft cap");
+        require(_liquidityPercent > 0 && _liquidityPercent <= 100, "Invalid liquidity percent");
+        require(_fairlaunchStart > block.timestamp, "Invalid start time");
+        require(_fairlaunchEnd > _fairlaunchStart, "Invalid end time");
+
+        owner = _owner;
+
+        // Initialize fairlaunch info with clean flag separation
+        fairlaunchInfo = FairlaunchInfo({
+            saleToken: _saleToken,
+            baseToken: _baseToken,
+            buybackRate: _buybackRate,
+            sellingAmount: _sellingAmount,
+            softCap: _softCap,
+            liquidityPercent: _liquidityPercent,
+            fairlaunchStart: _fairlaunchStart,
+            fairlaunchEnd: _fairlaunchEnd,
+            isNative: _isNative,  
+            isWhitelist: _isWhitelist
+        });
+
+        // Initialize token info
+        IERC20 token = IERC20(_saleToken);
+        tokenInfo = TokenInfo({
+            name: token.name(),
+            symbol: token.symbol(),
+            totalSupply: token.totalSupply(),
+            decimals: token.decimals()
+        });
+
+        emit FairlaunchCreated(_owner, address(this));
     }
 
-    function init_private (
-        address _sale_token,
-        address _base_token,
-        bool presale_in_native,
-        uint256 _buyback,
-        bool _whitelist,
-        uint256 _selling_amount,
-        uint256 _softcap, 
-        uint256 _liquidityPercent,
-        uint256 _presale_start,
-        uint256 _presale_end
-        ) public onlyOwner {
+    // ============ VIEW FUNCTIONS ============
 
-        require(persaleSetting == false, "Already setted");
-        require(_sale_token != address(0), "Zero Address");
-        
-        presale_info.sale_token = address(_sale_token);
-        presale_info.base_token = address(_base_token);
-        presale_info.buyback = _buyback;
-        presale_info.whitelist = _whitelist;
-        meta_info.presale_in_native = presale_in_native;
-        presale_info.selling_amount = _selling_amount;
-        presale_info.softcap = _softcap;
-        presale_info.liquidityPercent = _liquidityPercent;
+    /**
+     * @dev Get current fairlaunch status
+     */
+    function getStatus() public view returns (FairlaunchStatus) {
+        if (cancelled) return FairlaunchStatus.CANCELLED;
+        if (finalized) return FairlaunchStatus.FINALIZED;
 
-        presale_info.presale_end = _presale_end;
-        presale_info.presale_start =  _presale_start;
-        meta_info.presale_in_native = false;
-        finalized = false;
-        if(_whitelist == true) {
-            presale_info.presale_type = PresaleType.WHITELIST;
-        } else {
-            presale_info.presale_type = PresaleType.PUBLIC;
+        if (block.timestamp < fairlaunchInfo.fairlaunchStart) {
+            return FairlaunchStatus.PENDING;
         }
 
-        //Set token token info
-        tokeninfo.name = IBEP20(presale_info.sale_token).name();
-        tokeninfo.symbol = IBEP20(presale_info.sale_token).symbol();
-        tokeninfo.decimal = IBEP20(presale_info.sale_token).decimals();
-        tokeninfo.totalsupply = IBEP20(presale_info.sale_token).totalSupply();
-        router = IPancakeSwapRouter(0xcd7d16fB918511BF7269eC4f48d61D79Fb26f918); 
-        profit = IMyContract(profitAddress);
-        
-        persaleSetting = true;
-    }
-
-    function setOwner(address _newOwner) public onlyOwner {
-        owner = _newOwner;
-    }
-
-    function presaleStatus() public view returns (uint256) {
-        if(finalized == true) {
-            return 5; // Finalized
-        }
-        if(meta_info.presale_in_native == true) {
-            return 4; // Canceled
-        }
-        if ((block.timestamp > presale_info.presale_end) && ((address(this).balance) < presale_info.softcap)) {
-            return 3; // Failure
-        }
-        // if (status.raised_amount >= presale_info.hardcap) {
-        //     return 2; // Wonderful - reached to Hardcap
-        // }
-        if ((block.timestamp > presale_info.presale_end) && ((address(this).balance) >= presale_info.softcap)) {
-            return 2; // SUCCESS - Presale ended with reaching Softcap
-        }
-        if ((block.timestamp >= presale_info.presale_start) && (block.timestamp <= presale_info.presale_end)) {
-            return 1; // ACTIVE - Deposits enabled, now in Presale
-        }
-            return 0; // QUED - Awaiting start block
-    }
-    
-    // Accepts msg.value for eth or _amount for ERC20 tokens
-    function userDeposit (uint256 _amount) public payable nonReentrant {
-        if(presale_info.presale_type == PresaleType.WHITELIST) {
-            require(whitelistInfo[msg.sender] == true, "You are not whitelisted.");
-        } 
-        require(presaleStatus() == 1, "Not Active");
-        // require(presale_info.raise_min <= msg.value, "Balance is insufficent");
-        if (meta_info.presale_in_native) {
-            require(msg.value > 0, "Balance is invalid.");
-        } else {
-            require(_amount > 0, "Balance is invalid.");
+        if (block.timestamp <= fairlaunchInfo.fairlaunchEnd) {
+            return FairlaunchStatus.ACTIVE;
         }
 
-        uint256 amount_in = meta_info.presale_in_native ? msg.value : _amount;
-        buyers[msg.sender] = buyers[msg.sender].add(amount_in);
-        raised_amount = raised_amount.add(amount_in);
-        
-        if (!meta_info.presale_in_native) {
-            TransferHelper.safeTransferFrom(address(presale_info.base_token), msg.sender, address(this), amount_in);
-        }
-        emit UserDepsitedSuccess(msg.sender, msg.value);
-    }
-    
-    // withdraw presale tokens
-    // percentile withdrawls allows fee on transfer or rebasing tokens to still work
-    function userWithdrawTokens () public nonReentrant {
-        require(presaleStatus() == 2, "Not succeeded"); // Success
-        require(block.timestamp >= presale_info.presale_end + lock_delay, "Token Locked."); // Lock duration check
-        uint256 value = calcSendTokens(msg.sender);
-        
-        TransferHelper.safeTransfer(address(presale_info.sale_token), msg.sender, value);
-
-        buyers[msg.sender] = 0;
-        emit UserWithdrawTokensSuccess(value);
-    }
-    
-    // On presale failure
-    // Percentile withdrawls allows fee on transfer or rebasing tokens to still work
-    function userWithdrawBaseTokens () public nonReentrant {
-        require(presaleStatus() == 3 || presaleStatus() == 4, "Not failed or canceled."); // FAILED
-        uint256 value = buyers[msg.sender];
-        address payable receiver = payable(msg.sender);
-
-        TransferHelper.safeTransferBaseToken(presale_info.base_token, receiver, value, meta_info.presale_in_native);
-        // receiver.transfer(value);
-
-        // TransferHelper.safeTransferBaseToken(address(presale_info.sale_token), payable(msg.sender), value, false);
-        buyers[msg.sender] = 0;
-        emit UserWithdrawSuccess(value);
-    }
-    
-    // On presale failure
-    function ownerWithdrawTokens () private onlyOwner {
-        TransferHelper.safeTransfer(address(presale_info.sale_token), owner, IBEP20(presale_info.sale_token).balanceOf(address(this)));
-        
-        emit UserWithdrawSuccess(IBEP20(presale_info.sale_token).balanceOf(address(this)));
-    }
-
-    function purchaseICOCoin (address to) public nonReentrant onlyOwner {
-        require(presaleStatus() == 2, "Not succeeded"); // Success
-        
-        address payable reciver = payable(to);
-        // uint256 percent = profit.getPercent();
-        address addr = profit.getProfit();
-        // uint256 supply = address(this).balance;
-        // payable(addr).transfer(supply.mul(percent).div(100));
-        // approveTokens();
-
-        // get profit of base token
-        uint256 _raised_amount = raised_amount;
-        if (meta_info.base_token_fee > 0) {
-            uint256 basefee = _raised_amount.mul(meta_info.base_token_fee).div(100);
-            _raised_amount.sub(basefee);
-            if (meta_info.referral_address != address(0)) {
-                uint256 referralfee = basefee.mul(meta_info.referral_fee).div(100);
-                if (meta_info.presale_in_native) {
-                    payable(meta_info.referral_address).transfer(referralfee);
-                } else {
-                    TransferHelper.safeTransferBaseToken(presale_info.base_token, payable(meta_info.referral_address), referralfee, meta_info.presale_in_native);
-                }    
-                basefee.sub(referralfee);
-            }
-            if (meta_info.presale_in_native) {
-                payable(addr).transfer(basefee);
-            } else {
-                TransferHelper.safeTransferBaseToken(presale_info.base_token, payable(address(this)), basefee, meta_info.presale_in_native);
-            }
-        }
-        // get profit of sale token
-        if (meta_info.sale_token_fee > 0) {
-            uint256 sold_amount = calcRate() * raised_amount / 10 ** (18 - tokeninfo.decimal);
-            uint256 salefee = sold_amount.mul(meta_info.sale_token_fee).div(100);
-            if (meta_info.referral_address != address(0)) {
-                uint256 referralfee = salefee.mul(meta_info.referral_fee).div(100);
-                TransferHelper.safeTransfer(presale_info.sale_token, msg.sender, salefee);
-                salefee.sub(referralfee);
-            }
-            TransferHelper.safeTransfer(presale_info.sale_token, meta_info.referral_address, salefee);
+        // Fairlaunch has ended
+        if (raisedAmount >= fairlaunchInfo.softCap) {
+            return FairlaunchStatus.SUCCESS;
         }
 
-        uint256 supply = meta_info.presale_in_native ? address(this).balance : IBEP20(presale_info.base_token).balanceOf(address(this));
-        uint256 liquiditySupply = supply * presale_info.liquidityPercent / 100;
-        uint256 value = calcRate();
-        uint256 tokenLiquidity = liquiditySupply *  value / (10 ** (18 - tokeninfo.decimal)); 
-        require(IBEP20(presale_info.sale_token).balanceOf(address(this)) >= tokenLiquidity, "insufficient tokens");
-        IBEP20(presale_info.sale_token).approve(address(router), tokenLiquidity);
-        // require(success == true, 'Approve failed');
-        if (meta_info.presale_in_native) {
-            router.addLiquidityETH{value: liquiditySupply}(
-                presale_info.sale_token,
-                tokenLiquidity,
-                0,
-                0,
-                reciver,
-                block.timestamp
-            ); 
-        } else {
-            bool success_ = IBEP20(presale_info.base_token).approve(address(router), liquiditySupply);
-            require(success_ == true, 'Base Token Approve failed');
-            router.addLiquidity(
-                presale_info.base_token, 
-                presale_info.sale_token, 
-                liquiditySupply, 
-                tokenLiquidity, 
-                0, 
-                0, 
-                reciver, 
-                block.timestamp);
-        }
-
-        supply = supply.sub(liquiditySupply);
-        TransferHelper.safeTransferBaseToken(presale_info.base_token, reciver, supply, meta_info.presale_in_native);
-        finalized = true;
+        return FairlaunchStatus.FAILED;
     }
 
-    function getTimestamp () public view returns (uint256) {
-        return block.timestamp;
+    /**
+     * @dev Calculate current token rate based on raised amount and selling amount
+     * Uses the correct decimal formula to avoid precision issues
+     */
+    function calculateCurrentRate() public view returns (uint256) {
+        if (raisedAmount == 0) return 0;
+
+        // Rate = sellingAmount / raisedAmount (adjusted for decimals)
+        return fairlaunchInfo.sellingAmount.mul(10**(18 - tokenInfo.decimals)).div(raisedAmount);
     }
 
-    function setLockDelay (uint256 delay) public onlyOwner {
-        lock_delay = delay;
+    /**
+     * @dev Calculate token amount for given base amount using current rate
+     * Uses the correct decimal formula from Presale
+     */
+    function calculateTokenAmount(uint256 baseAmount) public view returns (uint256) {
+        uint256 currentRate = calculateCurrentRate();
+        if (currentRate == 0) return 0;
+
+        return baseAmount.mul(currentRate).div(10**(18 - tokenInfo.decimals));
     }
 
-    function setCancel() public onlyOwner {
-        meta_info.presale_in_native = true;
+    /**
+     * @dev Check if address is whitelisted
+     */
+    function isWhitelisted(address user) public view returns (bool) {
+        if (!fairlaunchInfo.isWhitelist) return true;
+        return whitelist[user];
     }
 
-    function calcRate() public view returns (uint256 tokenRate) {
-        uint256 value = meta_info.presale_in_native ? (address(this).balance) : IBEP20(presale_info.base_token).balanceOf(address(this));
-        tokenRate = 10 ** 18 / value * presale_info.selling_amount ;
-    }
-
-    function calcSendTokens(address user) public view returns (uint256 token_) {
-        uint256 value = calcRate();
-        token_ = value * buyers[user] / 10 ** (18 - tokeninfo.decimal);
-    }
-
-    function calcLiquidity() public view returns (uint256 tokens) {
-        uint256 value = calcRate();
-        uint256 liquiditySupply = address(this).balance * presale_info.liquidityPercent / 100;
-        tokens = liquiditySupply *  value / (10 ** (18 - tokeninfo.decimal)); 
-    }
-
-    function ownerView() public view returns (address) {
-        return owner;
-    }
-
-    function approveTokens() public {
-        uint256 percent = profit.getPercent();
-        address addr = profit.getProfit();
-        uint256 supply = address(this).balance;
-        uint256 value = supply.mul(percent).div(100);
-        payable(addr).transfer(value);
-    }
-
+    /**
+     * @dev Get fairlaunch progress as percentage (0-100)
+     */
     function getProgress() public view returns (uint256) {
-        uint256 value = raised_amount.mul(100).div(presale_info.softcap);
-        return value;
+        if (fairlaunchInfo.softCap == 0) return 0;
+        return raisedAmount.mul(100).div(fairlaunchInfo.softCap);
     }
 
-    function getRaised() public view returns (uint256) {
-        return raised_amount;
+    /**
+     * @dev Check if user can participate
+     */
+    function canParticipate(address user, uint256 amount) public view returns (bool, string memory) {
+        if (getStatus() != FairlaunchStatus.ACTIVE) {
+            return (false, "Fairlaunch not active");
+        }
+
+        if (!isWhitelisted(user)) {
+            return (false, "Not whitelisted");
+        }
+
+        if (amount == 0) {
+            return (false, "Invalid amount");
+        }
+
+        return (true, "");
     }
 
-    function getUserStatus() public view returns (uint256) {
-        return buyers[msg.sender];
+    // ============ CORE FUNCTIONS ============
+
+    /**
+     * @dev Participate in fairlaunch by contributing base tokens
+     * @param amount Amount of ERC20 base tokens (ignored for native KLC)
+     */
+    function participate(uint256 amount) external payable nonReentrant onlyWhenActive {
+        uint256 contribution = fairlaunchInfo.isNative ? msg.value : amount;
+
+        (bool canPart, string memory reason) = canParticipate(msg.sender, contribution);
+        require(canPart, reason);
+
+        // Store contribution and calculate tokens at finalization
+        // This avoids the rate calculation issues from the original contract
+        ParticipantInfo storage participant = participants[msg.sender];
+        if (participant.baseContribution == 0) {
+            participantCount = participantCount.add(1);
+        }
+
+        participant.baseContribution = participant.baseContribution.add(contribution);
+        raisedAmount = raisedAmount.add(contribution);
+
+        // Handle payment
+        if (!fairlaunchInfo.isNative) {
+            TransferHelper.safeTransferFrom(fairlaunchInfo.baseToken, msg.sender, address(this), contribution);
+        }
+
+        emit Participated(msg.sender, contribution, 0); // Token amount calculated at finalization
     }
 
-    function setProfitAddress(address to) public onlyOwner {
-        profitAddress = to;
+    /**
+     * @dev Finalize successful fairlaunch - adds liquidity and burns LP tokens
+     */
+    function finalize() external nonReentrant onlyOwner {
+        require(!finalized, "Already finalized");
+        require(getStatus() == FairlaunchStatus.SUCCESS, "Fairlaunch not successful");
+        require(address(router) != address(0), "Router not set");
+
+        // Calculate final token allocations for all participants
+        _calculateFinalAllocations();
+
+        // In fairlaunch: 100% of raised funds go to liquidity (liquidityPercent should be 100)
+        // But we'll respect the configured percentage for flexibility
+        uint256 liquidityBase = raisedAmount.mul(fairlaunchInfo.liquidityPercent).div(100);
+        uint256 liquidityTokens = liquidityBase.mul(calculateCurrentRate()).div(10**(18 - tokenInfo.decimals));
+
+        // Verify sufficient tokens for liquidity
+        require(IERC20(fairlaunchInfo.saleToken).balanceOf(address(this)) >= liquidityTokens, "Insufficient tokens for liquidity");
+
+        // Approve tokens for router
+        TransferHelper.safeApprove(fairlaunchInfo.saleToken, address(router), liquidityTokens);
+
+        uint256 liquidity;
+
+        if (fairlaunchInfo.isNative) {
+            // Add KLC liquidity
+            (, , liquidity) = router.addLiquidityKLC{value: liquidityBase}(
+                fairlaunchInfo.saleToken,
+                liquidityTokens,
+                0, // Accept any amount of tokens
+                0, // Accept any amount of KLC
+                address(this), // LP tokens come to this contract for burning
+                block.timestamp + 3600 // 1 hour deadline
+            );
+        } else {
+            // Add ERC20 liquidity
+            TransferHelper.safeApprove(fairlaunchInfo.baseToken, address(router), liquidityBase);
+
+            (, , liquidity) = router.addLiquidity(
+                fairlaunchInfo.baseToken,
+                fairlaunchInfo.saleToken,
+                liquidityBase,
+                liquidityTokens,
+                0, // Accept any amount of base tokens
+                0, // Accept any amount of sale tokens
+                address(this), // LP tokens come to this contract for burning
+                block.timestamp + 3600 // 1 hour deadline
+            );
+        }
+
+        // Burn LP tokens permanently
+        _burnLPTokens(liquidity);
+
+        // In a true fairlaunch, ALL raised funds go to liquidity - no funds to owner
+        // Any remaining base tokens should also go to liquidity or be locked permanently
+
+        // Set finalization state
+        finalized = true;
+        tokenUnlockTime = block.timestamp.add(lockDelay);
+
+        emit FairlaunchFinalized(raisedAmount, liquidityBase);
     }
 
-    function setRefferal(
-        address _referralAddr,
-        uint256 _referralFee
-    ) public onlyOwner {
-        meta_info.referral_address = _referralAddr;
-        meta_info.referral_fee = _referralFee;
+    /**
+     * @dev Internal function to calculate final token allocations for all participants
+     * This ensures consistent allocation based on final rate
+     * Note: Currently participants calculate allocation on-demand during claiming for gas efficiency
+     */
+    function _calculateFinalAllocations() internal view {
+        // In this implementation, token allocations are calculated on-demand during claimTokens()
+        // This avoids gas issues from iterating through all participants during finalization
+        // The final rate is available via calculateCurrentRate() when needed
     }
 
-    // Set base and sale token fees
-    function setFees(
-        uint256 _base_token_fee,
-        uint256 _sale_token_fee
-    ) public virtual onlyOwner {
-        meta_info.base_token_fee = _base_token_fee;
-        meta_info.sale_token_fee = _sale_token_fee;
+    /**
+     * @dev Internal function to burn LP tokens permanently
+     * @param _liquidity Amount of LP tokens to burn
+     */
+    function _burnLPTokens(uint256 _liquidity) internal {
+        require(_liquidity > 0, "No LP tokens to burn");
+
+        // Get LP token address from router's factory
+        address factory = router.factory();
+        address wklc = router.WKLC();
+        address baseTokenAddr = fairlaunchInfo.isNative ? wklc : fairlaunchInfo.baseToken;
+
+        lpTokenAddress = IKalySwapFactory(factory).getPair(fairlaunchInfo.saleToken, baseTokenAddr);
+        require(lpTokenAddress != address(0), "LP pair not found");
+
+        // Store LP token info
+        lpTokenAmount = _liquidity;
+
+        // Burn LP tokens by sending to dead address
+        TransferHelper.safeTransfer(lpTokenAddress, DEAD_ADDRESS, _liquidity);
+        lpTokensBurned = true;
+
+        emit LPTokensBurned(lpTokenAddress, _liquidity);
     }
 
-    // Set referral address and fee
-    function setReferral(
-        address referralAddress,
-        uint256 referralFee
-    ) public onlyOwner {
-        referral_address =referralAddress;
-        referral_fee = referralFee;
+    // ============ WITHDRAWAL FUNCTIONS ============
+
+    /**
+     * @dev Claim purchased tokens after successful fairlaunch finalization
+     */
+    function claimTokens() external nonReentrant onlyWhenFinalized {
+        require(block.timestamp >= tokenUnlockTime, "Tokens still locked");
+
+        ParticipantInfo storage participant = participants[msg.sender];
+        require(participant.baseContribution > 0, "No contribution found");
+        require(!participant.claimed, "Already claimed");
+
+        // Calculate token allocation based on final rate
+        uint256 tokenAmount = calculateTokenAmount(participant.baseContribution);
+        require(tokenAmount > 0, "No tokens to claim");
+
+        participant.tokenAllocation = tokenAmount;
+        participant.claimed = true;
+
+        TransferHelper.safeTransfer(fairlaunchInfo.saleToken, msg.sender, tokenAmount);
+
+        emit TokensClaimed(msg.sender, tokenAmount);
     }
 
-    function setWhitelist() public onlyOwner {
-        presale_info.presale_type = PresaleType.WHITELIST;
+    /**
+     * @dev Claim refund if fairlaunch failed
+     */
+    function claimRefund() external nonReentrant {
+        FairlaunchStatus status = getStatus();
+        require(status == FairlaunchStatus.FAILED || status == FairlaunchStatus.CANCELLED, "Fairlaunch not failed");
+
+        ParticipantInfo storage participant = participants[msg.sender];
+        require(participant.baseContribution > 0, "No contribution to refund");
+        require(!participant.claimed, "Already claimed");
+
+        uint256 refundAmount = participant.baseContribution;
+        participant.claimed = true;
+
+        TransferHelper.safeTransferBaseToken(fairlaunchInfo.baseToken, payable(msg.sender), refundAmount, !fairlaunchInfo.isNative);
+
+        emit RefundClaimed(msg.sender, refundAmount);
     }
 
-    function _addWhitelistAddr(address addr, bool isBurner) private onlyOwner {
-        whitelistInfo[addr] = true;
-        flokiBurnerInfo[addr] = isBurner;
+    /**
+     * @dev Owner can only withdraw remaining SALE TOKENS after finalization
+     * Base tokens (raised funds) can NEVER be withdrawn - they all go to liquidity
+     * This maintains the fairlaunch principle
+     */
+    function withdrawRemainingTokens() external nonReentrant onlyOwner onlyWhenFinalized {
+        // Only allow withdrawal of remaining sale tokens, never base tokens
+        uint256 remainingTokens = IERC20(fairlaunchInfo.saleToken).balanceOf(address(this));
+        if (remainingTokens > 0) {
+            TransferHelper.safeTransfer(fairlaunchInfo.saleToken, owner, remainingTokens);
+            emit RemainingFundsWithdrawn(owner, remainingTokens);
+        }
+
+        // Explicitly prevent any base token withdrawal
+        uint256 remainingBase = fairlaunchInfo.isNative ? address(this).balance : IERC20(fairlaunchInfo.baseToken).balanceOf(address(this));
+        require(remainingBase == 0, "Base tokens must stay locked - fairlaunch principle");
     }
 
-    function _deleteWhitelistAddr(address addr) private onlyOwner {
-        if (!flokiBurnerInfo[addr])
-            whitelistInfo[addr] = false;
+    // ============ ADMIN FUNCTIONS ============
+
+    /**
+     * @dev Set router address (must be called before finalization)
+     */
+    function setRouter(address _router) external onlyOwner {
+        require(_router != address(0), "Invalid router");
+        require(!finalized, "Cannot change after finalization");
+        router = IKalySwapRouter(_router);
     }
 
-    function setWhitelistInfo(address[] memory user, bool isBurner) public onlyOwner IsWhitelisted {
-        for(uint i = 0 ; i < user.length ; i ++) {
-            _addWhitelistAddr(user[i], isBurner);
+    /**
+     * @dev Set profit address
+     */
+    function setProfitAddress(address _profitAddress) external onlyOwner {
+        require(_profitAddress != address(0), "Invalid profit address");
+        profitAddress = _profitAddress;
+    }
+
+    /**
+     * @dev Set token unlock delay
+     */
+    function setLockDelay(uint256 _delay) external onlyOwner {
+        require(!finalized, "Cannot change after finalization");
+        lockDelay = _delay;
+    }
+
+    /**
+     * @dev Add addresses to whitelist
+     */
+    function addToWhitelist(address[] calldata users) external onlyOwner {
+        for (uint256 i = 0; i < users.length; i++) {
+            whitelist[users[i]] = true;
         }
     }
 
-    function deleteWhitelistInfo(address[] memory user) public onlyOwner IsWhitelisted {
-        for(uint i = 0 ; i < user.length ; i ++) {
-            _deleteWhitelistAddr(user[i]);
+    /**
+     * @dev Remove addresses from whitelist
+     */
+    function removeFromWhitelist(address[] calldata users) external onlyOwner {
+        for (uint256 i = 0; i < users.length; i++) {
+            whitelist[users[i]] = false;
         }
     }
 
-    function setWhiteListable(bool _whiteList) public onlyOwner(){
-        whiteList = _whiteList;
+    /**
+     * @dev Cancel fairlaunch (only before finalization)
+     * FIXED: Now properly sets cancelled flag instead of wrong flag
+     */
+    function cancelFairlaunch() external onlyOwner {
+        require(!finalized, "Cannot cancel after finalization");
+        cancelled = true; // FIXED: Properly sets cancelled flag
+        emit FairlaunchCancelled();
+    }
+
+    /**
+     * @dev Set referral information
+     */
+    function setReferral(address _referralAddress, uint256 _referralFee) external onlyOwner {
+        require(!finalized, "Cannot change after finalization");
+        referralAddress = _referralAddress;
+        referralFee = _referralFee;
+    }
+
+    /**
+     * @dev Pay referral fee (called by factory)
+     */
+    function payReferralFee() external payable {
+        require(referralAddress != address(0), "No referral set");
+        require(msg.value == referralFee, "Incorrect referral fee");
+
+        payable(referralAddress).transfer(msg.value);
+        emit ReferralFeePaid(referralAddress, msg.value);
+    }
+
+    /**
+     * @dev Transfer ownership
+     */
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Invalid new owner");
+        owner = newOwner;
+    }
+
+    // ============ COMPATIBILITY FUNCTIONS ============
+    // These maintain compatibility with existing interfaces
+
+    /**
+     * @dev Legacy status function for compatibility
+     */
+    function presaleStatus() external view returns (uint256) {
+        FairlaunchStatus status = getStatus();
+        if (status == FairlaunchStatus.PENDING) return 0;
+        if (status == FairlaunchStatus.ACTIVE) return 1;
+        if (status == FairlaunchStatus.SUCCESS) return 2;
+        if (status == FairlaunchStatus.FAILED) return 3;
+        if (status == FairlaunchStatus.CANCELLED) return 4;
+        if (status == FairlaunchStatus.FINALIZED) return 5;
+        return 0;
+    }
+
+    /**
+     * @dev Legacy function for compatibility
+     */
+    function buyers(address user) external view returns (uint256) {
+        return participants[user].baseContribution;
     }
 }

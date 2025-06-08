@@ -515,7 +515,7 @@ library Address {
      *
      * Requirements:
      *
-     * - the calling contract must have an ETH balance of at least `value`.
+     * - the calling contract must have an KLC balance of at least `value`.
      * - the called Solidity function must be `payable`.
      *
      * _Available since v3.1._
@@ -631,14 +631,14 @@ library Address {
 }
 
 
-// Dependency file: contracts/interfaces/IUniswapV2Router02.sol
+// Dependency file: contracts/interfaces/IKalyswapRouter.sol
 
 // pragma solidity >=0.6.2;
 
-interface IUniswapV2Router01 {
+interface IKalyswapRouter01 {
     function factory() external pure returns (address);
 
-    function WETH() external pure returns (address);
+    function WKLC() external pure returns (address);
 
     function addLiquidity(
         address tokenA,
@@ -657,11 +657,11 @@ interface IUniswapV2Router01 {
             uint256 liquidity
         );
 
-    function addLiquidityETH(
+    function addLiquidityKLC(
         address token,
         uint256 amountTokenDesired,
         uint256 amountTokenMin,
-        uint256 amountETHMin,
+        uint256 amountKLCMin,
         address to,
         uint256 deadline
     )
@@ -669,7 +669,7 @@ interface IUniswapV2Router01 {
         payable
         returns (
             uint256 amountToken,
-            uint256 amountETH,
+            uint256 amountKLC,
             uint256 liquidity
         );
 
@@ -683,14 +683,14 @@ interface IUniswapV2Router01 {
         uint256 deadline
     ) external returns (uint256 amountA, uint256 amountB);
 
-    function removeLiquidityETH(
+    function removeLiquidityKLC(
         address token,
         uint256 liquidity,
         uint256 amountTokenMin,
-        uint256 amountETHMin,
+        uint256 amountKLCMin,
         address to,
         uint256 deadline
-    ) external returns (uint256 amountToken, uint256 amountETH);
+    ) external returns (uint256 amountToken, uint256 amountKLC);
 
     function removeLiquidityWithPermit(
         address tokenA,
@@ -706,18 +706,18 @@ interface IUniswapV2Router01 {
         bytes32 s
     ) external returns (uint256 amountA, uint256 amountB);
 
-    function removeLiquidityETHWithPermit(
+    function removeLiquidityKLCWithPermit(
         address token,
         uint256 liquidity,
         uint256 amountTokenMin,
-        uint256 amountETHMin,
+        uint256 amountKLCMin,
         address to,
         uint256 deadline,
         bool approveMax,
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint256 amountToken, uint256 amountETH);
+    ) external returns (uint256 amountToken, uint256 amountKLC);
 
     function swapExactTokensForTokens(
         uint256 amountIn,
@@ -735,14 +735,14 @@ interface IUniswapV2Router01 {
         uint256 deadline
     ) external returns (uint256[] memory amounts);
 
-    function swapExactETHForTokens(
+    function swapExactKLCForTokens(
         uint256 amountOutMin,
         address[] calldata path,
         address to,
         uint256 deadline
     ) external payable returns (uint256[] memory amounts);
 
-    function swapTokensForExactETH(
+    function swapTokensForExactKLC(
         uint256 amountOut,
         uint256 amountInMax,
         address[] calldata path,
@@ -750,7 +750,7 @@ interface IUniswapV2Router01 {
         uint256 deadline
     ) external returns (uint256[] memory amounts);
 
-    function swapExactTokensForETH(
+    function swapExactTokensForKLC(
         uint256 amountIn,
         uint256 amountOutMin,
         address[] calldata path,
@@ -758,7 +758,7 @@ interface IUniswapV2Router01 {
         uint256 deadline
     ) external returns (uint256[] memory amounts);
 
-    function swapETHForExactTokens(
+    function swapKLCForExactTokens(
         uint256 amountOut,
         address[] calldata path,
         address to,
@@ -794,28 +794,28 @@ interface IUniswapV2Router01 {
         returns (uint256[] memory amounts);
 }
 
-interface IUniswapV2Router02 is IUniswapV2Router01 {
-    function removeLiquidityETHSupportingFeeOnTransferTokens(
+interface IKalyswapRouter02 is IKalyswapRouter01 {
+    function removeLiquidityKLCSupportingFeeOnTransferTokens(
         address token,
         uint256 liquidity,
         uint256 amountTokenMin,
-        uint256 amountETHMin,
+        uint256 amountKLCMin,
         address to,
         uint256 deadline
-    ) external returns (uint256 amountETH);
+    ) external returns (uint256 amountKLC);
 
-    function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
+    function removeLiquidityKLCWithPermitSupportingFeeOnTransferTokens(
         address token,
         uint256 liquidity,
         uint256 amountTokenMin,
-        uint256 amountETHMin,
+        uint256 amountKLCMin,
         address to,
         uint256 deadline,
         bool approveMax,
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint256 amountETH);
+    ) external returns (uint256 amountKLC);
 
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
         uint256 amountIn,
@@ -825,14 +825,14 @@ interface IUniswapV2Router02 is IUniswapV2Router01 {
         uint256 deadline
     ) external;
 
-    function swapExactETHForTokensSupportingFeeOnTransferTokens(
+    function swapExactKLCForTokensSupportingFeeOnTransferTokens(
         uint256 amountOutMin,
         address[] calldata path,
         address to,
         uint256 deadline
     ) external payable;
 
-    function swapExactTokensForETHSupportingFeeOnTransferTokens(
+    function swapExactTokensForKLCSupportingFeeOnTransferTokens(
         uint256 amountIn,
         uint256 amountOutMin,
         address[] calldata path,
@@ -842,11 +842,11 @@ interface IUniswapV2Router02 is IUniswapV2Router01 {
 }
 
 
-// Dependency file: contracts/interfaces/IUniswapV2Factory.sol
+// Dependency file: contracts/interfaces/IKalyswapFactory.sol
 
 // pragma solidity >=0.5.0;
 
-interface IUniswapV2Factory {
+interface IKalyswapFactory {
     event PairCreated(
         address indexed token0,
         address indexed token1,
@@ -910,8 +910,8 @@ pragma solidity =0.8.4;
 // import "@openzeppelin/contracts/access/Ownable.sol";
 // import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 // import "@openzeppelin/contracts/utils/Address.sol";
-// import "contracts/interfaces/IUniswapV2Router02.sol";
-// import "contracts/interfaces/IUniswapV2Factory.sol";
+// import "contracts/interfaces/IKalyswapRouter.sol";
+// import "contracts/interfaces/IKalyswapFactory.sol";
 // import "contracts/BaseToken.sol";
 
 contract LiquidityGeneratorToken is IERC20, Ownable, BaseToken {
@@ -946,8 +946,8 @@ contract LiquidityGeneratorToken is IERC20, Ownable, BaseToken {
     uint256 public _charityFee;
     uint256 private _previousCharityFee = _charityFee;
 
-    IUniswapV2Router02 public uniswapV2Router;
-    address public uniswapV2Pair;
+    IKalyswapRouter02 public kalyswapV2Router;
+    address public kalyswapV2Pair;
     address public _charityAddress;
 
     bool inSwapAndLiquify;
@@ -959,7 +959,7 @@ contract LiquidityGeneratorToken is IERC20, Ownable, BaseToken {
     event SwapAndLiquifyEnabledUpdated(bool enabled);
     event SwapAndLiquify(
         uint256 tokensSwapped,
-        uint256 ethReceived,
+        uint256 klcReceived,
         uint256 tokensIntoLiqudity
     );
 
@@ -1019,13 +1019,13 @@ contract LiquidityGeneratorToken is IERC20, Ownable, BaseToken {
 
         _rOwned[owner()] = _rTotal;
 
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(router_);
-        // Create a uniswap pair for this new token
-        uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
-            .createPair(address(this), _uniswapV2Router.WETH());
+        IKalyswapRouter02 _kalyswapV2Router = IKalyswapRouter02(router_);
+        // Create a kalyswap pair for this new token
+        kalyswapV2Pair = IKalyswapFactory(_kalyswapV2Router.factory())
+            .createPair(address(this), _kalyswapV2Router.WKLC());
 
         // set the rest of the contract variables
-        uniswapV2Router = _uniswapV2Router;
+        kalyswapV2Router = _kalyswapV2Router;
 
         // exclude owner and this contract from fee
         _isExcludedFromFee[owner()] = true;
@@ -1184,7 +1184,7 @@ contract LiquidityGeneratorToken is IERC20, Ownable, BaseToken {
     }
 
     function excludeFromReward(address account) public onlyOwner {
-        // require(account != 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D, 'We can not exclude Uniswap router.');
+        // require(account != 0x7fD3173Eef473F64AD4553169D6d334d42Df1d95, 'We can not exclude KalySwap router.');
         require(!_isExcluded[account], "Account is already excluded");
         if (_rOwned[account] > 0) {
             _tOwned[account] = tokenFromReflection(_rOwned[account]);
@@ -1262,7 +1262,7 @@ contract LiquidityGeneratorToken is IERC20, Ownable, BaseToken {
         emit SwapAndLiquifyEnabledUpdated(_enabled);
     }
 
-    //to recieve ETH from uniswapV2Router when swaping
+    //to recieve KLC from kalyswapV2Router when swaping
     receive() external payable {}
 
     function _reflectFee(uint256 rFee, uint256 tFee) private {
@@ -1459,7 +1459,7 @@ contract LiquidityGeneratorToken is IERC20, Ownable, BaseToken {
         // is the token balance of this contract address over the min number of
         // tokens that we need to initiate a swap + liquidity lock?
         // also, don't get caught in a circular liquidity event.
-        // also, don't swap & liquify if sender is uniswap pair.
+        // also, don't swap & liquify if sender is kalyswap pair.
         uint256 contractTokenBalance = balanceOf(address(this));
 
         bool overMinTokenBalance = contractTokenBalance >=
@@ -1467,7 +1467,7 @@ contract LiquidityGeneratorToken is IERC20, Ownable, BaseToken {
         if (
             overMinTokenBalance &&
             !inSwapAndLiquify &&
-            from != uniswapV2Pair &&
+            from != kalyswapV2Pair &&
             swapAndLiquifyEnabled
         ) {
             contractTokenBalance = numTokensSellToAddToLiquidity;
@@ -1492,48 +1492,48 @@ contract LiquidityGeneratorToken is IERC20, Ownable, BaseToken {
         uint256 half = contractTokenBalance.div(2);
         uint256 otherHalf = contractTokenBalance.sub(half);
 
-        // capture the contract's current ETH balance.
-        // this is so that we can capture exactly the amount of ETH that the
-        // swap creates, and not make the liquidity event include any ETH that
+        // capture the contract's current KLC balance.
+        // this is so that we can capture exactly the amount of KLC that the
+        // swap creates, and not make the liquidity event include any KLC that
         // has been manually sent to the contract
         uint256 initialBalance = address(this).balance;
 
-        // swap tokens for ETH
-        swapTokensForEth(half); // <- this breaks the ETH -> HATE swap when swap+liquify is triggered
+        // swap tokens for KLC
+        swapTokensForEth(half); // <- this breaks the KLC -> HATE swap when swap+liquify is triggered
 
-        // how much ETH did we just swap into?
+        // how much KLC did we just swap into?
         uint256 newBalance = address(this).balance.sub(initialBalance);
 
-        // add liquidity to uniswap
+        // add liquidity to kalyswap
         addLiquidity(otherHalf, newBalance);
 
         emit SwapAndLiquify(half, newBalance, otherHalf);
     }
 
     function swapTokensForEth(uint256 tokenAmount) private {
-        // generate the uniswap pair path of token -> weth
+        // generate the kalyswap pair path of token -> wklc
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = uniswapV2Router.WETH();
+        path[1] = kalyswapV2Router.WKLC();
 
-        _approve(address(this), address(uniswapV2Router), tokenAmount);
+        _approve(address(this), address(kalyswapV2Router), tokenAmount);
 
         // make the swap
-        uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+        kalyswapV2Router.swapExactTokensForKLCSupportingFeeOnTransferTokens(
             tokenAmount,
-            0, // accept any amount of ETH
+            0, // accept any amount of KLC
             path,
             address(this),
             block.timestamp
         );
     }
 
-    function addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
+    function addLiquidity(uint256 tokenAmount, uint256 klcAmount) private {
         // approve token transfer to cover all possible scenarios
-        _approve(address(this), address(uniswapV2Router), tokenAmount);
+        _approve(address(this), address(kalyswapV2Router), tokenAmount);
 
         // add the liquidity
-        uniswapV2Router.addLiquidityETH{value: ethAmount}(
+        kalyswapV2Router.addLiquidityKLC{value: klcAmount}(
             address(this),
             tokenAmount,
             0, // slippage is unavoidable

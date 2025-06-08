@@ -28,7 +28,7 @@ contract TokenFactoryBase is Ownable, ReentrancyGuard {
     factoryManager = factoryManager_;
     implementation = implementation_;
     feeTo = msg.sender;
-    flatFee = 10_000_000 gwei;
+    flatFee = 3_000_000_000 gwei;
   }
 
   function setImplementation(address implementation_) external onlyOwner {

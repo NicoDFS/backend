@@ -1,0 +1,215 @@
+# Token Factory Manager
+type TokenFactoryManager @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  owner: Bytes!
+  allowedFactories: [Bytes!]!
+  totalTokensCreated: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+# Token Factories
+type TokenFactory @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  factoryType: String! # "Standard", "LiquidityGenerator"
+  manager: TokenFactoryManager!
+  feeTo: Bytes!
+  flatFee: BigInt!
+  totalTokensCreated: BigInt!
+  tokens: [Token!]! @derivedFrom(field: "factory")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+# Tokens created by factories
+type Token @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  factory: TokenFactory!
+  creator: Bytes!
+  name: String!
+  symbol: String!
+  decimals: Int!
+  totalSupply: BigInt!
+  tokenType: String! # "Standard", "LiquidityGenerator", etc.
+  presales: [Presale!]! @derivedFrom(field: "saleToken")
+  fairlaunches: [Fairlaunch!]! @derivedFrom(field: "saleToken")
+  createdAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# Presale Factory
+type PresaleFactory @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  feeTo: Bytes!
+  flatFee: BigInt!
+  totalPresalesCreated: BigInt!
+  presales: [Presale!]! @derivedFrom(field: "factory")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+# Individual Presales
+type Presale @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  factory: PresaleFactory!
+  creator: Bytes!
+  saleToken: Token!
+  baseToken: Bytes! # Address of base token (KLC, USDT, etc.)
+  presaleRate: BigInt! # Tokens per base token
+  listingRate: BigInt! # Listing rate for DEX
+  softCap: BigInt!
+  hardCap: BigInt!
+  liquidityPercent: BigInt!
+  presaleStart: BigInt!
+  presaleEnd: BigInt!
+  status: String! # "Active", "Successful", "Failed", "Cancelled"
+  totalRaised: BigInt!
+  totalParticipants: BigInt!
+  participants: [PresaleParticipant!]! @derivedFrom(field: "presale")
+  deposits: [PresaleDeposit!]! @derivedFrom(field: "presale")
+  withdrawals: [PresaleWithdrawal!]! @derivedFrom(field: "presale")
+  createdAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# Presale Participants
+type PresaleParticipant @entity(immutable: false) {
+  id: ID!
+  presale: Presale!
+  participant: Bytes!
+  totalDeposited: BigInt!
+  tokensOwed: BigInt!
+  hasWithdrawn: Boolean!
+  deposits: [PresaleDeposit!]! @derivedFrom(field: "participant")
+  withdrawals: [PresaleWithdrawal!]! @derivedFrom(field: "participant")
+  firstDepositAt: BigInt!
+  lastDepositAt: BigInt!
+}
+
+# Presale Deposits
+type PresaleDeposit @entity(immutable: true) {
+  id: ID!
+  presale: Presale!
+  participant: PresaleParticipant!
+  amount: BigInt!
+  tokensOwed: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# Presale Withdrawals
+type PresaleWithdrawal @entity(immutable: true) {
+  id: ID!
+  presale: Presale!
+  participant: PresaleParticipant!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# Fairlaunch Factory
+type FairlaunchFactory @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  feeTo: Bytes!
+  flatFee: BigInt!
+  totalFairlaunchesCreated: BigInt!
+  fairlaunches: [Fairlaunch!]! @derivedFrom(field: "factory")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+# Individual Fairlaunches
+type Fairlaunch @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  factory: FairlaunchFactory!
+  creator: Bytes!
+  saleToken: Token!
+  baseToken: Bytes! # Address of base token
+  softCap: BigInt!
+  maxSpendPerBuyer: BigInt!
+  liquidityPercent: BigInt!
+  presaleStart: BigInt!
+  presaleEnd: BigInt!
+  status: String! # "Active", "Successful", "Failed", "Cancelled"
+  totalRaised: BigInt!
+  totalParticipants: BigInt!
+  participants: [FairlaunchParticipant!]! @derivedFrom(field: "fairlaunch")
+  deposits: [FairlaunchDeposit!]! @derivedFrom(field: "fairlaunch")
+  withdrawals: [FairlaunchWithdrawal!]! @derivedFrom(field: "fairlaunch")
+  createdAt: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# Fairlaunch Participants
+type FairlaunchParticipant @entity(immutable: false) {
+  id: ID!
+  fairlaunch: Fairlaunch!
+  participant: Bytes!
+  totalDeposited: BigInt!
+  tokensOwed: BigInt!
+  hasWithdrawn: Boolean!
+  deposits: [FairlaunchDeposit!]! @derivedFrom(field: "participant")
+  withdrawals: [FairlaunchWithdrawal!]! @derivedFrom(field: "participant")
+  firstDepositAt: BigInt!
+  lastDepositAt: BigInt!
+}
+
+# Fairlaunch Deposits
+type FairlaunchDeposit @entity(immutable: true) {
+  id: ID!
+  fairlaunch: Fairlaunch!
+  participant: FairlaunchParticipant!
+  amount: BigInt!
+  tokensOwed: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# Fairlaunch Withdrawals
+type FairlaunchWithdrawal @entity(immutable: true) {
+  id: ID!
+  fairlaunch: Fairlaunch!
+  participant: FairlaunchParticipant!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+# Daily Statistics
+type LaunchpadDayData @entity(immutable: false) {
+  id: ID!
+  date: Int!
+  totalTokensCreated: BigInt!
+  totalPresalesCreated: BigInt!
+  totalFairlaunchesCreated: BigInt!
+  totalVolumeRaised: BigInt!
+  activePresales: BigInt!
+  activeFairlaunches: BigInt!
+}
+
+# Global Statistics
+type LaunchpadStats @entity(immutable: false) {
+  id: ID!
+  totalTokensCreated: BigInt!
+  totalPresalesCreated: BigInt!
+  totalFairlaunchesCreated: BigInt!
+  totalVolumeRaised: BigInt!
+  totalParticipants: BigInt!
+  activePresales: BigInt!
+  activeFairlaunches: BigInt!
+  lastUpdated: BigInt!
+}

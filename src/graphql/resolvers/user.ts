@@ -4,32 +4,33 @@ import { transactionService } from '../../services/user/transactionService';
 import { ethers } from 'ethers';
 import KalyWalletGenerator from '../../services/user/walletGenerator';
 import { TransactionStatus, TransactionType } from '@prisma/client';
+import { Context } from '../context';
+import { ApiKeyPermissions } from '../../services/auth/apiKeyService';
 
-// Authentication middleware
-const authenticate = async (context: any) => {
-  const token = context.req?.headers?.authorization?.replace('Bearer ', '');
-  if (!token) {
-    throw new Error('Authentication required');
+// Enhanced authentication middleware that supports both JWT and API Key
+const authenticate = async (context: Context) => {
+  if (context.user) {
+    return context.user;
   }
+  throw new Error('Authentication required');
+};
 
-  const decoded = userService.verifyToken(token);
-  if (!decoded) {
-    throw new Error('Invalid token');
+// Check if user has permission (for API key auth)
+const checkPermission = (context: Context, requiredPermission: ApiKeyPermissions) => {
+  if (context.authType === 'apikey' && context.apiKey) {
+    if (!context.apiKeyService.hasPermission(context.apiKey, requiredPermission)) {
+      throw new Error(`Insufficient permissions. Required: ${requiredPermission}`);
+    }
   }
-
-  const user = await userService.getUserById(decoded.id);
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  return user;
+  // JWT users have all permissions by default
 };
 
 export const userResolvers = {
   Query: {
     // Get current authenticated user
-    me: async (_: any, __: any, context: any) => {
+    me: async (_: any, __: any, context: Context) => {
       const user = await authenticate(context);
+      checkPermission(context, ApiKeyPermissions.READ_USER);
       return {
         id: user.id,
         username: user.username,
@@ -254,10 +255,11 @@ export const userResolvers = {
     },
 
     // Create a new wallet for the authenticated user
-    createWallet: async (_: any, { password }: { password: string }, context: any) => {
+    createWallet: async (_: any, { password }: { password: string }, context: Context) => {
       try {
         // Authenticate user
         const user = await authenticate(context);
+        checkPermission(context, ApiKeyPermissions.WRITE_USER);
 
         // Generate wallet
         const wallet = await walletService.generateWallet(user.id, password);

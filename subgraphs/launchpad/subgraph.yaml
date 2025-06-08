@@ -1,0 +1,145 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  # Token Factory Manager
+  - kind: ethereum
+    name: TokenFactoryManager
+    network: kalychain
+    source:
+      address: "0xd8C7417F6Da77D534586715Cb1187935043C5A8F"
+      abi: TokenFactoryManager
+      startBlock: 34399619
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenFactoryManager
+      abis:
+        - name: TokenFactoryManager
+          file: ../../src/blockchain/abis/launchpad/TokenFactoryManager.json
+      eventHandlers:
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+      file: ./src/token-factory-manager.ts
+
+  # Standard Token Factory
+  - kind: ethereum
+    name: StandardTokenFactory
+    network: kalychain
+    source:
+      address: "0xB9228A684822D557ABd419814bC6b536Fa34E3BD"
+      abi: StandardTokenFactory
+      startBlock: 34399619
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenFactory
+        - Token
+        - LaunchpadStats
+        - LaunchpadDayData
+      abis:
+        - name: StandardTokenFactory
+          file: ../../src/blockchain/abis/launchpad/StandardTokenFactory.json
+        - name: StandardERC20
+          file: ../../src/blockchain/abis/launchpad/StandardERC20.json
+      eventHandlers:
+        - event: TokenCreated(indexed address,indexed address,string,string,uint8,uint256)
+          handler: handleStandardTokenCreated
+        - event: FeeToUpdated(indexed address,indexed address)
+          handler: handleFeeToUpdated
+        - event: FlatFeeUpdated(uint256,uint256)
+          handler: handleFlatFeeUpdated
+      file: ./src/standard-token-factory.ts
+
+  # Liquidity Generator Token Factory
+  - kind: ethereum
+    name: LiquidityGeneratorTokenFactory
+    network: kalychain
+    source:
+      address: "0xa13567796eeB7357f48caC8d83b4c1b885B66762"
+      abi: LiquidityGeneratorTokenFactory
+      startBlock: 34399619
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - TokenFactory
+        - LaunchpadStats
+        - LaunchpadDayData
+      abis:
+        - name: LiquidityGeneratorTokenFactory
+          file: ../../src/blockchain/abis/launchpad/LiquidityGeneratorTokenFactory.json
+      eventHandlers:
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+      callHandlers:
+        - function: create(string,string,uint256,address,address,uint16,uint16,uint16)
+          handler: handleLiquidityGeneratorTokenCreated
+      file: ./src/liquidity-generator-token-factory.ts
+
+  # Presale Factory
+  - kind: ethereum
+    name: PresaleFactory
+    network: kalychain
+    source:
+      address: "0x42CA326c90868e034293C679BD61F5B0e6c88149"
+      abi: PresaleFactory
+      startBlock: 34399619
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - PresaleFactory
+        - Presale
+        - LaunchpadStats
+        - LaunchpadDayData
+      abis:
+        - name: PresaleFactory
+          file: ../../src/blockchain/abis/launchpad/PresaleFactory.json
+        - name: Presale
+          file: ../../src/blockchain/abis/launchpad/Presale.json
+      callHandlers:
+        - function: create(address,address,uint256[2],uint256[2],uint256,uint256,uint256,uint256,uint256)
+          handler: handlePresaleCreated
+      file: ./src/presale-factory.ts
+
+  # Fairlaunch Factory
+  - kind: ethereum
+    name: FairlaunchFactory
+    network: kalychain
+    source:
+      address: "0xcf2A1325b32c3818B24171513cc9F71ae74592B9"
+      abi: FairlaunchFactory
+      startBlock: 34399619
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FairlaunchFactory
+        - Fairlaunch
+        - LaunchpadStats
+        - LaunchpadDayData
+      abis:
+        - name: FairlaunchFactory
+          file: ../../src/blockchain/abis/launchpad/FairLaunchFactory.json
+        - name: Fairlaunch
+          file: ../../src/blockchain/abis/launchpad/Fairlaunch.json
+      eventHandlers:
+        - event: FairlaunchCreated(indexed address,indexed address,indexed address,address,bool,uint256,uint256)
+          handler: handleFairlaunchCreated
+        - event: FeeToUpdated(address,address)
+          handler: handleFeeToUpdated
+        - event: FlatFeeUpdated(uint256,uint256)
+          handler: handleFlatFeeUpdated
+      file: ./src/fairlaunch-factory.ts
+
+
+
+

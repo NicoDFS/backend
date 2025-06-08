@@ -18,7 +18,7 @@ contract BabyTokenFactory is Ownable {
 
   constructor() {
     feeTo = msg.sender;
-    flatFee = 10_000_000 gwei;
+    flatFee = 3_000_000_000 gwei;
   }
 
   function setFeeTo(address feeReceivingAddress) external onlyOwner {

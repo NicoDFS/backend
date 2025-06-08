@@ -323,3 +323,35 @@ type TokensVestedEvent @entity(immutable: true) {
   blockNumber: BigInt!
   transactionHash: Bytes!
 }
+
+# Router entities
+type Router @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  factory: Bytes!
+  WKLC: Bytes!
+  totalSwaps: BigInt!
+  totalVolumeUSD: BigDecimal!
+  totalVolumeKLC: BigDecimal!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type RouterSwap @entity(immutable: true) {
+  id: ID!
+  router: Router!
+  transactionHash: Bytes!
+  logIndex: BigInt!
+  sender: Bytes!
+  recipient: Bytes!
+  path: [Bytes!]!
+  amountIn: BigDecimal!
+  amountOut: BigDecimal!
+  amountInUSD: BigDecimal!
+  amountOutUSD: BigDecimal!
+  swapType: String!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  gasUsed: BigInt!
+  gasPrice: BigInt!
+}

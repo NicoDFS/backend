@@ -1192,14 +1192,238 @@ export const DexService = {
     }
   },
 
+  // Get pair day data for 24h volume calculations
+  async getPairDayData(first = 10, skip = 0) {
+    if (USE_MOCK_DATA) {
+      return [];
+    }
+
+    // Get today's date ID (days since epoch)
+    const today = Math.floor(Date.now() / 1000 / 86400);
+
+    const query = gql`
+      query getPairDayData($first: Int!, $skip: Int!, $date: Int!) {
+        pairDayDatas(
+          first: $first,
+          skip: $skip,
+          where: { date: $date },
+          orderBy: volumeUSD,
+          orderDirection: desc
+        ) {
+          id
+          date
+          pair {
+            id
+            token0 {
+              symbol
+            }
+            token1 {
+              symbol
+            }
+          }
+          volumeUSD
+          volumeToken0
+          volumeToken1
+          txCount
+        }
+      }
+    `;
+
+    try {
+      const { pairDayDatas } = await dexClient.request(query, { first, skip, date: today });
+      return pairDayDatas;
+    } catch (error) {
+      console.error('Error fetching pair day data:', error);
+      return [];
+    }
+  },
+
+  // Get router data
+  async getRouter() {
+    if (USE_MOCK_DATA) {
+      return {
+        id: '0x183f288bf7eebe1a3f318f4681df4a70ef32b2f3',
+        address: '0x183F288BF7EEBe1A3f318F4681dF4a70ef32B2f3',
+        totalSwaps: '1000',
+        totalVolumeUSD: '500000',
+        totalVolumeKLC: '250000'
+      };
+    }
+
+    const query = gql`
+      query {
+        router(id: "0x183f288bf7eebe1a3f318f4681df4a70ef32b2f3") {
+          id
+          address
+          factory
+          WKLC
+          totalSwaps
+          totalVolumeUSD
+          totalVolumeKLC
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    try {
+      const { router } = await dexClient.request(query);
+      return router;
+    } catch (error) {
+      console.error('Error fetching router:', error);
+      return null;
+    }
+  },
+
+  // Get router swaps
+  async getRouterSwaps(first = 100, skip = 0) {
+    if (USE_MOCK_DATA) {
+      return [];
+    }
+
+    const query = gql`
+      query getRouterSwaps($first: Int!, $skip: Int!) {
+        routerSwaps(
+          first: $first,
+          skip: $skip,
+          orderBy: timestamp,
+          orderDirection: desc
+        ) {
+          id
+          router {
+            id
+          }
+          transactionHash
+          sender
+          recipient
+          path
+          amountIn
+          amountOut
+          amountInUSD
+          amountOutUSD
+          swapType
+          timestamp
+          blockNumber
+        }
+      }
+    `;
+
+    try {
+      const { routerSwaps } = await dexClient.request(query, { first, skip });
+      return routerSwaps;
+    } catch (error) {
+      console.error('Error fetching router swaps:', error);
+      return [];
+    }
+  },
+
+  // Get LP staking data
+  async getLPStakingData() {
+    if (USE_MOCK_DATA) {
+      return {
+        stakingPools: [{
+          id: '0x2bd4b7f303c1f372689d52a55ec202e0cf831a26',
+          totalStaked: '6642973370737734929062',
+          rewardRate: '0',
+          periodFinish: '1748028413',
+          lastUpdateTime: '1747942013',
+          stakingToken: { symbol: 'KSL', decimals: 18 },
+          rewardsToken: { symbol: 'KSWAP', decimals: 18 },
+          stakers: []
+        }]
+      };
+    }
+
+    const query = gql`
+      query {
+        stakingPools {
+          id
+          address
+          totalStaked
+          rewardRate
+          rewardsDuration
+          periodFinish
+          lastUpdateTime
+          rewardPerTokenStored
+          createdAt
+          updatedAt
+          stakingToken {
+            id
+            symbol
+            name
+            decimals
+          }
+          rewardsToken {
+            id
+            symbol
+            name
+            decimals
+          }
+        }
+        stakers(first: 100) {
+          id
+          address
+          stakedAmount
+          rewards
+          rewardPerTokenPaid
+          lastAction
+          lastActionTimestamp
+          pool {
+            id
+          }
+        }
+        stakeEvents(first: 50) {
+          id
+          staker {
+            address
+          }
+          pool {
+            id
+          }
+          amount
+          timestamp
+          blockNumber
+          transactionHash
+        }
+        rewardEvents(first: 50) {
+          id
+          staker {
+            address
+          }
+          pool {
+            id
+          }
+          amount
+          timestamp
+          blockNumber
+          transactionHash
+        }
+      }
+    `;
+
+    try {
+      const data = await dexClient.request(query);
+      return data;
+    } catch (error) {
+      console.error('Error fetching LP staking data:', error);
+      return {
+        stakingPools: [],
+        stakers: [],
+        stakeEvents: [],
+        rewardEvents: []
+      };
+    }
+  },
+
   // Get DEX overview data for dashboard
   async getDexOverview() {
     try {
       // Get data from subgraph
-      const [factory, dayData, pairs] = await Promise.all([
+      const [factory, dayData, pairs, pairDayData] = await Promise.all([
         this.getFactory(),
         this.getDexDayData(1),
-        this.getPairs(100) // Fetch more pairs to get a more accurate total liquidity
+        this.getPairs(100), // Fetch more pairs to get a more accurate total liquidity
+        this.getPairDayData(100) // Get today's volume data for each pair
       ]);
 
       // First try to get KLC price from the subgraph
@@ -1231,12 +1455,22 @@ export const DexService = {
         totalLiquidityKLC: factoryData.totalLiquidityKLC
       });
 
+      // Create a map of pair day data for quick lookup
+      const pairDayDataMap = new Map();
+      pairDayData.forEach((dayData: any) => {
+        pairDayDataMap.set(dayData.pair.id, dayData);
+      });
+
       // Update the reserveUSD values for each pair using the router contract
       const updatedPairs = await Promise.all(pairs.map(async (pair: any) => {
         try {
           // Calculate the reserves in USD manually
           const reserve0 = parseFloat(pair.reserve0);
           const reserve1 = parseFloat(pair.reserve1);
+
+          // Get 24h volume data for this pair
+          const dayData = pairDayDataMap.get(pair.id);
+          const volume24h = dayData ? parseFloat(dayData.volumeUSD || '0') : 0;
 
           // Special handling for WKLC/USDT pair
           if ((pair.token0.symbol === 'WKLC' && pair.token1.symbol === 'USDT') ||
@@ -1276,11 +1510,12 @@ export const DexService = {
             totalLiquidityUSD += reserveUSD;
             totalLiquidityKLC += reserveKLC;
 
-            // Return updated pair with calculated reserveUSD
+            // Return updated pair with calculated reserveUSD and 24h volume
             return {
               ...pair,
               reserveUSD: reserveUSD.toString(),
-              reserveKLC: reserveKLC.toString()
+              reserveKLC: reserveKLC.toString(),
+              volume24h: volume24h.toString()
             };
           }
 
@@ -1318,11 +1553,12 @@ export const DexService = {
           totalLiquidityUSD += reserveUSD;
           totalLiquidityKLC += reserveKLC;
 
-          // Return updated pair with calculated reserveUSD
+          // Return updated pair with calculated reserveUSD and 24h volume
           return {
             ...pair,
             reserveUSD: reserveUSD.toString(),
-            reserveKLC: reserveKLC.toString()
+            reserveKLC: reserveKLC.toString(),
+            volume24h: volume24h.toString()
           };
         } catch (error: any) {
           console.error(`Error calculating liquidity for pair ${pair.token0?.symbol || 'unknown'}/${pair.token1?.symbol || 'unknown'}:`, error.message || error);

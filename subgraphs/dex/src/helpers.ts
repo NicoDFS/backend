@@ -11,6 +11,7 @@ export let BI_18 = BigInt.fromI32(18);
 export let WKLC_ADDRESS = '0x069255299Bb729399f3CECaBdc73d15d3D10a2A3';
 export let KSWAP_ADDRESS = '0xCC93b84cEed74Dc28c746b7697d6fA477ffFf65a';
 export let FACTORY_ADDRESS = '0xD42Af909d323D88e0E933B6c50D3e91c279004ca';
+export let ROUTER_ADDRESS = '0x183F288BF7EEBe1A3f318F4681dF4a70ef32B2f3';
 export let WKLC_KSWAP_PAIR = ''; // Replace with the actual WKLC-KSWAP pair address
 export let WKLC_USDT_PAIR = '0x25fddaf836d12dc5e285823a644bb86e0b79c8e2'; // WKLC/USDT pair for price calculation
 
@@ -122,8 +123,8 @@ export function getKLCPriceInUSD(): BigDecimal {
 
     if (token0 !== null && token1 !== null) {
       let klcPrice: BigDecimal;
-      let token0Decimals = token0.decimals.toI32();
-      let token1Decimals = token1.decimals.toI32();
+      let token0Decimals = token0.decimals;
+      let token1Decimals = token1.decimals;
 
       // Log token information for debugging
       log.info(

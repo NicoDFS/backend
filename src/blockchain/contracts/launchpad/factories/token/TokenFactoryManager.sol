@@ -25,7 +25,7 @@ contract TokenFactoryManager is Ownable, IFactoryManager {
     require(tokenFactories.contains(msg.sender), "Not a whitelisted factory");
     _;
   }
- 
+
   function addTokenFactory(address factory) public onlyOwner {
     tokenFactories.add(factory);
   }
@@ -40,7 +40,7 @@ contract TokenFactoryManager is Ownable, IFactoryManager {
     tokenFactories.remove(factory);
   }
 
-  function assignTokensToOwner(address owner, address token, uint8 tokenType) 
+  function assignTokensToOwner(address owner, address token, uint8 tokenType)
     external override onlyAllowedFactory {
     require(!hasToken[owner][token], "Token already exists");
     tokensOf[owner].push(Token(tokenType, token));
@@ -59,6 +59,10 @@ contract TokenFactoryManager is Ownable, IFactoryManager {
 
   function isTokenGenerated(address token) external view returns (bool) {
     return isGenerated[token];
+  }
+
+  function hasTokenForOwner(address owner, address token) external view returns (bool) {
+    return hasToken[owner][token];
   }
 
   function getToken(address owner, uint256 index) external view returns (address, uint8) {

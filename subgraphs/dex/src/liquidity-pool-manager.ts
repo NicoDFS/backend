@@ -10,6 +10,19 @@ import {
 } from '../generated/schema';
 import { ZERO_BI, ONE_BI } from './helpers';
 
+// Known whitelisted pool addresses based on the live frontend
+const WHITELISTED_POOLS: string[] = [
+  '0xf3e034650e1c2597a0af75012c1854247f271ee0', // WKLC-KSWAP
+  '0x1a3d8b9fe0a77923a8330ffce485afd2b0b8be7e', // WKLC-DAI
+  // '0x30ed4a3d51d7acebe1df5ae5257da3dc777080ad62', // WKLC-USDC (temporarily removed - invalid address)
+  '0x25fddaf836d12dc5e285823a644bb86e0b79c8e2', // WKLC-USDT
+  '0x0e520779287bb711c8e603cc85d532daa7c55372', // KSWAP-USDT
+  '0x82a20edd4a6c076f5c2f9d244c80c5906aa88268', // WKLC-ETH
+  '0x558d7d1ef09ae32dbdfe25f5f9eea6767288b156', // WKLC-POL
+  '0x5df408ae7a3a83b9889e8e661a6c91a00b723fde', // WKLC-BNB
+  '0x6548735742fc5cccb2cde021246feb333ef46211'  // WKLC-WBTC
+];
+
 // Helper function to get or create the liquidity pool manager
 function getOrCreateLiquidityPoolManager(address: Address, block: ethereum.Block): LiquidityPoolManager {
   let manager = LiquidityPoolManager.load(address.toHexString());
@@ -89,39 +102,61 @@ function getOrCreateLiquidityPoolManager(address: Address, block: ethereum.Block
 
     manager.save();
 
-    // Create some example whitelisted pools for demonstration
-    // In a real implementation, you would need to query the contract for actual whitelisted pools
-    createExampleWhitelistedPool(
-      manager.id,
-      Address.fromString('0x0000000000000000000000000000000000000001'),
-      BigInt.fromI32(100),
-      block.timestamp
-    );
-
-    createExampleWhitelistedPool(
-      manager.id,
-      Address.fromString('0x0000000000000000000000000000000000000002'),
-      BigInt.fromI32(200),
-      block.timestamp
-    );
+    // Read actual whitelisted pools from the contract
+    loadWhitelistedPools(manager, contract, block.timestamp);
   }
 
   return manager as LiquidityPoolManager;
 }
 
-// Helper function to create an example whitelisted pool
-function createExampleWhitelistedPool(
+// Function to load actual whitelisted pools from the contract
+function loadWhitelistedPools(
+  manager: LiquidityPoolManager,
+  contract: LiquidityPoolManagerV2,
+  timestamp: BigInt
+): void {
+  // Iterate through known whitelisted pool addresses
+  for (let i = 0; i < WHITELISTED_POOLS.length; i++) {
+    let pairAddress = Address.fromString(WHITELISTED_POOLS[i]);
+
+    // Check if this pair is actually whitelisted in the contract
+    let isWhitelistedResult = contract.try_isWhitelisted(pairAddress);
+    if (!isWhitelistedResult.reverted && isWhitelistedResult.value) {
+      // Get the weight for this pair
+      let weightResult = contract.try_weights(pairAddress);
+      let weight = weightResult.reverted ? ZERO_BI : weightResult.value;
+
+      // Create the whitelisted pool entity
+      let poolId = manager.id + '-' + pairAddress.toHexString();
+      let whitelistedPool = new WhitelistedPool(poolId);
+      whitelistedPool.manager = manager.id;
+      whitelistedPool.pair = pairAddress.toHexString();
+      whitelistedPool.weight = weight;
+      whitelistedPool.createdAt = timestamp;
+      whitelistedPool.updatedAt = timestamp;
+      whitelistedPool.save();
+    }
+  }
+}
+
+// Helper function to create or update a whitelisted pool
+function createOrUpdateWhitelistedPool(
   managerId: string,
   pairAddress: Address,
   weight: BigInt,
   timestamp: BigInt
 ): void {
   let poolId = managerId + '-' + pairAddress.toHexString();
-  let whitelistedPool = new WhitelistedPool(poolId);
-  whitelistedPool.manager = managerId;
-  whitelistedPool.pair = pairAddress.toHexString();
+  let whitelistedPool = WhitelistedPool.load(poolId);
+
+  if (whitelistedPool === null) {
+    whitelistedPool = new WhitelistedPool(poolId);
+    whitelistedPool.manager = managerId;
+    whitelistedPool.pair = pairAddress.toHexString();
+    whitelistedPool.createdAt = timestamp;
+  }
+
   whitelistedPool.weight = weight;
-  whitelistedPool.createdAt = timestamp;
   whitelistedPool.updatedAt = timestamp;
   whitelistedPool.save();
 }
@@ -133,4 +168,8 @@ export function handleOwnershipTransferred(event: OwnershipTransferred): void {
   // Update manager
   manager.updatedAt = event.block.timestamp;
   manager.save();
+
+  // Refresh whitelisted pools when ownership changes (in case new pools were added)
+  let contract = LiquidityPoolManagerV2.bind(event.address);
+  loadWhitelistedPools(manager, contract, event.block.timestamp);
 }

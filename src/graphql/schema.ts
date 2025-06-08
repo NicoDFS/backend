@@ -6,6 +6,7 @@ import { launchpadResolvers } from './resolvers/launchpad';
 import { stakingResolvers } from './resolvers/staking';
 import { monitoringResolvers } from './resolvers/monitoring';
 import { userResolvers } from './resolvers/user';
+import { apiKeyResolvers } from './resolvers/apiKey';
 
 const typeDefs = gql`
   type Token {
@@ -33,6 +34,7 @@ const typeDefs = gql`
     reserve1: String!
     reserveUSD: String
     volumeUSD: String
+    volume24h: String
     token0Price: String
     token1Price: String
     txCount: String
@@ -95,6 +97,97 @@ const typeDefs = gql`
     liquidityUSD: String!
     liquidityKLC: String!
     txCount: String!
+  }
+
+  type PairDayData {
+    id: ID!
+    date: Int!
+    pair: Pair!
+    volumeUSD: String!
+    volumeToken0: String!
+    volumeToken1: String!
+    txCount: String!
+  }
+
+  type Router {
+    id: ID!
+    address: String!
+    factory: String!
+    WKLC: String!
+    totalSwaps: String!
+    totalVolumeUSD: String!
+    totalVolumeKLC: String!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type RouterSwap {
+    id: ID!
+    router: Router!
+    transactionHash: String!
+    sender: String!
+    recipient: String!
+    path: [String!]!
+    amountIn: String!
+    amountOut: String!
+    amountInUSD: String!
+    amountOutUSD: String!
+    swapType: String!
+    timestamp: String!
+    blockNumber: String!
+  }
+
+  type StakingPool {
+    id: ID!
+    address: String!
+    totalStaked: String!
+    rewardRate: String!
+    rewardsDuration: String!
+    periodFinish: String!
+    lastUpdateTime: String!
+    rewardPerTokenStored: String!
+    createdAt: String!
+    updatedAt: String!
+    stakingToken: Token!
+    rewardsToken: Token!
+  }
+
+  type Staker {
+    id: ID!
+    address: String!
+    stakedAmount: String!
+    rewards: String!
+    rewardPerTokenPaid: String!
+    lastAction: String!
+    lastActionTimestamp: String!
+    pool: StakingPool!
+  }
+
+  type StakeEvent {
+    id: ID!
+    staker: Staker!
+    pool: StakingPool!
+    amount: String!
+    timestamp: String!
+    blockNumber: String!
+    transactionHash: String!
+  }
+
+  type RewardEvent {
+    id: ID!
+    staker: Staker!
+    pool: StakingPool!
+    amount: String!
+    timestamp: String!
+    blockNumber: String!
+    transactionHash: String!
+  }
+
+  type LPStakingData {
+    stakingPools: [StakingPool!]!
+    stakers: [Staker!]!
+    stakeEvents: [StakeEvent!]!
+    rewardEvents: [RewardEvent!]!
   }
 
   type LiquidityPoolManager {
@@ -223,52 +316,41 @@ const typeDefs = gql`
   type LaunchpadOverview {
     totalProjects: Int!
     activeProjects: Int!
+    totalTokensCreated: Int!
     totalFundsRaised: String!
     totalParticipants: Int!
     totalFeesCollected: String!
     factoryFees: LaunchpadFactoryFees!
     recentProjects: [LaunchpadProject!]!
-  }
-
-  type LaunchpadFactoryFees {
-    tokenFactory: String!
-    presaleFactory: String!
-    fairlaunchFactory: String!
-  }
-
-  type LaunchpadOverview {
-    totalProjects: Int!
-    activeProjects: Int!
-    totalFundsRaised: String!
-    totalParticipants: Int!
-    totalFeesCollected: String!
-    factoryFees: LaunchpadFactoryFees!
-    recentProjects: [LaunchpadProject!]!
+    lastUpdated: String
+    error: String
   }
 
   type LaunchpadProject {
     id: ID!
     name: String!
-    description: String!
     tokenAddress: String!
-    startTime: String!
-    endTime: String!
-    hardCap: String!
-    softCap: String!
+    startTime: String
+    endTime: String
+    hardCap: String
+    softCap: String
     status: String!
+    type: String!
+    creator: String!
+    saleToken: LaunchpadToken
+    totalRaised: String
+    totalParticipants: Int
+    createdAt: String!
   }
 
-  type StakingPool {
+  type LaunchpadToken {
     id: ID!
+    name: String
+    symbol: String
     address: String!
-    totalStaked: String!
-    rewardRate: String!
-    rewardsDuration: String!
-    periodFinish: String!
-    lastUpdateTime: String!
-    rewardPerTokenStored: String!
-    paused: Boolean!
   }
+
+
 
   type StakingUser {
     id: ID!
@@ -395,6 +477,31 @@ const typeDefs = gql`
     privateKey: String
   }
 
+  # API Key types
+  type ApiKey {
+    id: ID!
+    name: String!
+    prefix: String!
+    permissions: [String!]!
+    isActive: Boolean!
+    lastUsedAt: String
+    expiresAt: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type CreateApiKeyResponse {
+    apiKey: String!
+    record: ApiKey!
+  }
+
+  enum ApiKeyPermission {
+    READ_PUBLIC
+    READ_USER
+    WRITE_USER
+    ADMIN
+  }
+
   type Query {
     # DEX queries
     dexOverview: DexOverview
@@ -408,6 +515,10 @@ const typeDefs = gql`
     treasuryVester: TreasuryVester
     dexStakingPool: DexStakingPool
     dexDayData(first: Int, skip: Int): [DayData!]!
+    pairDayData(first: Int, skip: Int): [PairDayData!]!
+    router: Router
+    routerSwaps(first: Int, skip: Int): [RouterSwap!]!
+    lpStakingData: LPStakingData!
 
     # Bridge queries
     bridges(limit: Int, skip: Int): [Bridge!]!
@@ -454,6 +565,10 @@ const typeDefs = gql`
     userTransactions(limit: Int, offset: Int): [Transaction!]!
     walletTransactions(walletId: ID!, limit: Int, offset: Int): [Transaction!]!
 
+    # API Key queries
+    myApiKeys: [ApiKey!]!
+    apiKey(id: ID!): ApiKey
+
     # Admin queries
     allUsers: [User!]!
     allWallets: [Wallet!]!
@@ -483,6 +598,16 @@ const typeDefs = gql`
       status: String!,
       blockNumber: Int
     ): Transaction!
+
+    # API Key mutations
+    createApiKey(
+      name: String!,
+      permissions: [ApiKeyPermission!]!,
+      expiresAt: String
+    ): CreateApiKeyResponse!
+
+    revokeApiKey(id: ID!): ApiKey!
+    deleteApiKey(id: ID!): Boolean!
   }
 `;
 
@@ -495,5 +620,6 @@ export const schema = makeExecutableSchema({
     stakingResolvers,
     monitoringResolvers,
     userResolvers,
+    apiKeyResolvers,
   ],
 });

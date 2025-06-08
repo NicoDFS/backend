@@ -2801,7 +2801,7 @@ contract BABYTOKEN is ERC20, Ownable, BaseToken {
     {
         require(
             pair != uniswapV2Pair,
-            "BABYTOKEN: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs"
+            "BABYTOKEN: The KalySwap pair cannot be removed from automatedMarketMakerPairs"
         );
 
         _setAutomatedMarketMakerPair(pair, value);

@@ -24,7 +24,7 @@ contract BuybackBabyTokenFactory {
 
   constructor() {
     feeTo = msg.sender;
-    flatFee = 10_000_000 gwei;
+    flatFee = 3_000_000_000 gwei;
     _owner = msg.sender;
   }
   

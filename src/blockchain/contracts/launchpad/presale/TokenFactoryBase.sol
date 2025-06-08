@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity >= 0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -33,7 +33,7 @@ contract TokenFactoryBase is Ownable, ReentrancyGuard {
 //    factoryManager = factoryManager_;
     implementation = implementation_;
     feeTo = msg.sender;
-    flatFee = 10_000_000 gwei;
+    flatFee = 3_000_000_000 gwei;
   }
 
   function setImplementation(address implementation_) external onlyOwner {

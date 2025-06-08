@@ -1,667 +1,659 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >= 0.8.0;
+pragma solidity ^0.8.4;
 
+/**
+ * @title Presale
+ * @dev An updated presale contract with clean architecture
+ * @author KalyChain Team
+ */
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+abstract contract ReentrancyGuard {
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    modifier nonReentrant() {
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
+    }
+}
+
+library SafeMath {
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b <= a, "SafeMath: subtraction overflow");
+        return a - b;
+    }
+
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) return 0;
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b > 0, "SafeMath: division by zero");
+        return a / b;
+    }
+}
 
 interface IERC20 {
-    /**
-     * @dev Returns the amount of tokens in existence.
-     */
-    function totalSupply() external view returns (uint256);
-
-    /**
-     * @dev Returns the amount of tokens owned by `account`.
-     */
-    function balanceOf(address account) external view returns (uint256);
-
-    /**
-     * @dev Moves `amount` tokens from the caller's account to `recipient`.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transfer(address recipient, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
-     *
-     * This value changes when {approve} or {transferFrom} are called.
-     */
-    function allowance(address owner, address spender) external view returns (uint256);
-
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * IMPORTANT: Beware that changing an allowance with this method brings the risk
-     * that someone may use both the old and the new allowance by unfortunate
-     * transaction ordering. One possible solution to mitigate this race
-     * condition is to first reduce the spender's allowance to 0 and set the
-     * desired value afterwards:
-     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-     *
-     * Emits an {Approval} event.
-     */
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Moves `amount` tokens from `sender` to `recipient` using the
-     * allowance mechanism. `amount` is then deducted from the caller's
-     * allowance.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {approve}. `value` is the new allowance.
-     */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-}
-
-abstract contract Context {
-    function _msgSender() internal view virtual returns (address) {
-        return msg.sender;
-    }
-
-    function _msgData() internal view virtual returns (bytes calldata) {
-        return msg.data;
-    }
-}
-
-interface IERC20Metadata is IERC20 {
-    /**
-     * @dev Returns the name of the token.
-     */
     function name() external view returns (string memory);
-
-    /**
-     * @dev Returns the symbol of the token.
-     */
     function symbol() external view returns (string memory);
-
-    /**
-     * @dev Returns the decimals places of the token.
-     */
     function decimals() external view returns (uint8);
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
 }
 
-contract ERC20 is Context, IERC20, IERC20Metadata {
-    mapping(address => uint256) private _balances;
-
-    mapping(address => mapping(address => uint256)) private _allowances;
-
-    uint256 private _totalSupply;
-
-    string private _name;
-    string private _symbol;
-
-    /**
-     * @dev Sets the values for {name} and {symbol}.
-     *
-     * The default value of {decimals} is 18. To select a different value for
-     * {decimals} you should overload it.
-     *
-     * All two of these values are immutable: they can only be set once during
-     * construction.
-     */
-    constructor(string memory name_, string memory symbol_) {
-        _name = name_;
-        _symbol = symbol_;
+library TransferHelper {
+    function safeApprove(address token, address to, uint256 value) internal {
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x095ea7b3, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: APPROVE_FAILED');
     }
 
-    /**
-     * @dev Returns the name of the token.
-     */
-    function name() public view virtual override returns (string memory) {
-        return _name;
+    function safeTransfer(address token, address to, uint256 value) internal {
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0xa9059cbb, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: TRANSFER_FAILED');
     }
 
-    /**
-     * @dev Returns the symbol of the token, usually a shorter version of the
-     * name.
-     */
-    function symbol() public view virtual override returns (string memory) {
-        return _symbol;
+    function safeTransferFrom(address token, address from, address to, uint256 value) internal {
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: TRANSFER_FROM_FAILED');
     }
 
-    /**
-     * @dev Returns the number of decimals used to get its user representation.
-     * For example, if `decimals` equals `2`, a balance of `505` tokens should
-     * be displayed to a user as `5.05` (`505 / 10 ** 2`).
-     *
-     * Tokens usually opt for a value of 18, imitating the relationship between
-     * Ether and Wei. This is the value {ERC20} uses, unless this function is
-     * overridden;
-     *
-     * NOTE: This information is only used for _display_ purposes: it in
-     * no way affects any of the arithmetic of the contract, including
-     * {IERC20-balanceOf} and {IERC20-transfer}.
-     */
-    function decimals() public view virtual override returns (uint8) {
-        return 18;
+    function safeTransferBaseToken(address token, address payable to, uint256 value, bool isERC20) internal {
+        if (!isERC20) {
+            to.transfer(value);
+        } else {
+            (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0xa9059cbb, to, value));
+            require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: TRANSFER_FAILED');
+        }
     }
+}
 
-    /**
-     * @dev See {IERC20-totalSupply}.
-     */
-    function totalSupply() public view virtual override returns (uint256) {
-        return _totalSupply;
-    }
-
-    /**
-     * @dev See {IERC20-balanceOf}.
-     */
-    function balanceOf(address account) public view virtual override returns (uint256) {
-        return _balances[account];
-    }
-
-    /**
-     * @dev See {IERC20-transfer}.
-     *
-     * Requirements:
-     *
-     * - `to` cannot be the zero address.
-     * - the caller must have a balance of at least `amount`.
-     */
-    function transfer(address to, uint256 amount) public virtual override returns (bool) {
-        address owner = _msgSender();
-        _transfer(owner, to, amount);
-        return true;
-    }
-
-    /**
-     * @dev See {IERC20-allowance}.
-     */
-    function allowance(address owner, address spender) public view virtual override returns (uint256) {
-        return _allowances[owner][spender];
-    }
-
-    /**
-     * @dev See {IERC20-approve}.
-     *
-     * NOTE: If `amount` is the maximum `uint256`, the allowance is not updated on
-     * `transferFrom`. This is semantically equivalent to an infinite approval.
-     *
-     * Requirements:
-     *
-     * - `spender` cannot be the zero address.
-     */
-    function approve(address spender, uint256 amount) public virtual override returns (bool) {
-        address owner = _msgSender();
-        _approve(owner, spender, amount);
-        return true;
-    }
-
-    /**
-     * @dev See {IERC20-transferFrom}.
-     *
-     * Emits an {Approval} event indicating the updated allowance. This is not
-     * required by the EIP. See the note at the beginning of {ERC20}.
-     *
-     * NOTE: Does not update the allowance if the current allowance
-     * is the maximum `uint256`.
-     *
-     * Requirements:
-     *
-     * - `from` and `to` cannot be the zero address.
-     * - `from` must have a balance of at least `amount`.
-     * - the caller must have allowance for ``from``'s tokens of at least
-     * `amount`.
-     */
-    function transferFrom(
-        address from,
+interface IKalySwapRouter {
+    function factory() external pure returns (address);
+    function WKLC() external pure returns (address);
+    
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin,
         address to,
-        uint256 amount
-    ) public virtual override returns (bool) {
-        address spender = _msgSender();
-        _spendAllowance(from, spender, amount);
-        _transfer(from, to, amount);
-        return true;
-    }
-
-    /**
-     * @dev Atomically increases the allowance granted to `spender` by the caller.
-     *
-     * This is an alternative to {approve} that can be used as a mitigation for
-     * problems described in {IERC20-approve}.
-     *
-     * Emits an {Approval} event indicating the updated allowance.
-     *
-     * Requirements:
-     *
-     * - `spender` cannot be the zero address.
-     */
-    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        address owner = _msgSender();
-        _approve(owner, spender, allowance(owner, spender) + addedValue);
-        return true;
-    }
-
-    /**
-     * @dev Atomically decreases the allowance granted to `spender` by the caller.
-     *
-     * This is an alternative to {approve} that can be used as a mitigation for
-     * problems described in {IERC20-approve}.
-     *
-     * Emits an {Approval} event indicating the updated allowance.
-     *
-     * Requirements:
-     *
-     * - `spender` cannot be the zero address.
-     * - `spender` must have allowance for the caller of at least
-     * `subtractedValue`.
-     */
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        address owner = _msgSender();
-        uint256 currentAllowance = allowance(owner, spender);
-        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
-        unchecked {
-            _approve(owner, spender, currentAllowance - subtractedValue);
-        }
-
-        return true;
-    }
-
-    /**
-     * @dev Moves `amount` of tokens from `sender` to `recipient`.
-     *
-     * This internal function is equivalent to {transfer}, and can be used to
-     * e.g. implement automatic token fees, slashing mechanisms, etc.
-     *
-     * Emits a {Transfer} event.
-     *
-     * Requirements:
-     *
-     * - `from` cannot be the zero address.
-     * - `to` cannot be the zero address.
-     * - `from` must have a balance of at least `amount`.
-     */
-    function _transfer(
-        address from,
+        uint deadline
+    ) external returns (uint amountA, uint amountB, uint liquidity);
+    
+    function addLiquidityKLC(
+        address token,
+        uint amountTokenDesired,
+        uint amountTokenMin,
+        uint amountKLCMin,
         address to,
-        uint256 amount
-    ) internal virtual {
-        require(from != address(0), "ERC20: transfer from the zero address");
-        require(to != address(0), "ERC20: transfer to the zero address");
+        uint deadline
+    ) external payable returns (uint amountToken, uint amountKLC, uint liquidity);
+}
 
-        _beforeTokenTransfer(from, to, amount);
+interface IKalySwapFactory {
+    function getPair(address tokenA, address tokenB) external view returns (address pair);
+    function createPair(address tokenA, address tokenB) external returns (address pair);
+}
 
-        uint256 fromBalance = _balances[from];
-        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
-        unchecked {
-            _balances[from] = fromBalance - amount;
+/**
+ * @title Presale
+ * @dev Presale contract implementation
+ */
+contract Presale is ReentrancyGuard {
+    using SafeMath for uint256;
+
+    // ============ ENUMS ============
+    
+    enum PresaleStatus { PENDING, ACTIVE, SUCCESS, FAILED, CANCELLED, FINALIZED }
+    enum PresaleType { PUBLIC, WHITELIST }
+
+    // ============ STRUCTS ============
+    
+    struct PresaleInfo {
+        address saleToken;          // Token being sold
+        address baseToken;          // Token used for payment (address(0) for native KLC)
+        uint256 tokenRate;          // How many sale tokens per base token
+        uint256 liquidityRate;      // Rate for liquidity addition
+        uint256 raiseMin;           // Minimum contribution per user
+        uint256 raiseMax;           // Maximum contribution per user
+        uint256 softCap;            // Minimum total raise for success
+        uint256 hardCap;            // Maximum total raise
+        uint256 liquidityPercent;   // Percentage of raised funds for liquidity
+        uint256 presaleStart;       // Start timestamp
+        uint256 presaleEnd;         // End timestamp
+        PresaleType presaleType;    // Public or whitelist
+        uint256 publicTime;         // When whitelist becomes public (0 = always whitelist)
+    }
+
+    struct BuyerInfo {
+        uint256 baseContribution;   // Amount of base token contributed
+        uint256 tokenAllocation;    // Amount of sale tokens allocated
+        bool claimed;               // Whether tokens have been claimed
+    }
+
+    struct TokenInfo {
+        string name;
+        string symbol;
+        uint256 totalSupply;
+        uint8 decimals;
+    }
+
+    // ============ STATE VARIABLES ============
+    
+    address public owner;
+    PresaleInfo public presaleInfo;
+    TokenInfo public tokenInfo;
+    
+    // Status tracking
+    uint256 public raisedAmount;        // Total base tokens raised
+    uint256 public soldTokens;          // Total sale tokens sold
+    uint256 public participantCount;    // Number of unique participants
+    bool public cancelled;              // Whether presale is cancelled
+    bool public finalized;              // Whether presale is finalized
+    uint256 public tokenUnlockTime;     // When users can claim tokens
+    
+    // LP Token locking
+    address public lpTokenAddress;      // Address of LP token pair
+    uint256 public lpTokenAmount;       // Amount of LP tokens locked
+    uint256 public lpUnlockTime;        // When LP tokens can be withdrawn
+    uint256 public lpLockDuration;      // LP lock duration in seconds
+    address public lpRecipient;         // Who receives LP tokens after unlock
+    bool public lpTokensWithdrawn;      // Whether LP tokens have been withdrawn
+    
+    // Configuration
+    IKalySwapRouter public router;
+    uint256 public lockDelay;           // Additional token lock delay after finalization
+    
+    // Constants
+    uint256 public constant MIN_LP_LOCK_TIME = 2592000; // 1 month
+    uint256 public constant FOREVER_LOCK = type(uint256).max;
+    address public constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+    
+    // Mappings
+    mapping(address => BuyerInfo) public buyers;
+    mapping(address => bool) public whitelist;
+    mapping(address => bool) public permanentWhitelist;
+    
+    // ============ EVENTS ============
+    
+    event PresaleCreated(address indexed owner, address indexed presale);
+    event Participated(address indexed user, uint256 baseAmount, uint256 tokenAmount);
+    event TokensClaimed(address indexed user, uint256 amount);
+    event RefundClaimed(address indexed user, uint256 amount);
+    event PresaleFinalized(uint256 raisedAmount, uint256 liquidityAmount);
+    event LPTokensLocked(address indexed lpToken, uint256 amount, uint256 unlockTime);
+    event LPTokensWithdrawn(address indexed lpToken, uint256 amount, address recipient);
+    event PresaleCancelled();
+    event RemainingFundsWithdrawn(address indexed owner, uint256 amount);
+    
+    // ============ MODIFIERS ============
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+    
+    modifier onlyWhenActive() {
+        require(getStatus() == PresaleStatus.ACTIVE, "Presale not active");
+        _;
+    }
+    
+    modifier onlyWhenFinalized() {
+        require(getStatus() == PresaleStatus.FINALIZED, "Not finalized");
+        _;
+    }
+
+    // ============ CONSTRUCTOR ============
+
+    /**
+     * @dev Constructor - limited to 12 parameters due to Solidity constraints
+     */
+    constructor(
+        address _owner,
+        address _saleToken,
+        address _baseToken,
+        uint256 _tokenRate,
+        uint256 _liquidityRate,
+        uint256 _raiseMin,
+        uint256 _raiseMax,
+        uint256 _softCap,
+        uint256 _hardCap,
+        uint256 _liquidityPercent,
+        uint256 _presaleStart,
+        uint256 _presaleEnd
+    ) {
+        require(_owner != address(0), "Invalid owner");
+        require(_saleToken != address(0), "Invalid sale token");
+        require(_tokenRate > 0, "Invalid token rate");
+        require(_liquidityRate > 0, "Invalid liquidity rate");
+        require(_raiseMin > 0 && _raiseMax > _raiseMin, "Invalid raise limits");
+        require(_softCap > 0 && _hardCap > _softCap, "Invalid caps");
+        require(_liquidityPercent > 0 && _liquidityPercent <= 100, "Invalid liquidity percent");
+        require(_presaleStart > block.timestamp, "Invalid start time");
+        require(_presaleEnd > _presaleStart, "Invalid end time");
+
+        owner = _owner;
+
+        // Initialize presale info
+        presaleInfo = PresaleInfo({
+            saleToken: _saleToken,
+            baseToken: _baseToken,
+            tokenRate: _tokenRate,
+            liquidityRate: _liquidityRate,
+            raiseMin: _raiseMin,
+            raiseMax: _raiseMax,
+            softCap: _softCap,
+            hardCap: _hardCap,
+            liquidityPercent: _liquidityPercent,
+            presaleStart: _presaleStart,
+            presaleEnd: _presaleEnd,
+            presaleType: PresaleType.PUBLIC,
+            publicTime: 0
+        });
+
+        // Initialize token info
+        IERC20 token = IERC20(_saleToken);
+        tokenInfo = TokenInfo({
+            name: token.name(),
+            symbol: token.symbol(),
+            totalSupply: token.totalSupply(),
+            decimals: token.decimals()
+        });
+
+        // Initialize LP locking with defaults
+        lpLockDuration = MIN_LP_LOCK_TIME;
+        lpRecipient = _owner;
+
+        emit PresaleCreated(_owner, address(this));
+    }
+
+    // ============ VIEW FUNCTIONS ============
+
+    /**
+     * @dev Get current presale status (pure view function with no side effects)
+     */
+    function getStatus() public view returns (PresaleStatus) {
+        if (cancelled) return PresaleStatus.CANCELLED;
+        if (finalized) return PresaleStatus.FINALIZED;
+
+        if (block.timestamp < presaleInfo.presaleStart) {
+            return PresaleStatus.PENDING;
         }
-        _balances[to] += amount;
 
-        emit Transfer(from, to, amount);
-
-        _afterTokenTransfer(from, to, amount);
-    }
-
-    /** @dev Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply.
-     *
-     * Emits a {Transfer} event with `from` set to the zero address.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
-     */
-    function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: mint to the zero address");
-
-        _beforeTokenTransfer(address(0), account, amount);
-
-        _totalSupply += amount;
-        _balances[account] += amount;
-        emit Transfer(address(0), account, amount);
-
-        _afterTokenTransfer(address(0), account, amount);
-    }
-
-    /**
-     * @dev Destroys `amount` tokens from `account`, reducing the
-     * total supply.
-     *
-     * Emits a {Transfer} event with `to` set to the zero address.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
-     * - `account` must have at least `amount` tokens.
-     */
-    function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: burn from the zero address");
-
-        _beforeTokenTransfer(account, address(0), amount);
-
-        uint256 accountBalance = _balances[account];
-        require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
-        unchecked {
-            _balances[account] = accountBalance - amount;
+        if (block.timestamp <= presaleInfo.presaleEnd) {
+            if (raisedAmount >= presaleInfo.hardCap) {
+                return PresaleStatus.SUCCESS;
+            }
+            return PresaleStatus.ACTIVE;
         }
-        _totalSupply -= amount;
 
-        emit Transfer(account, address(0), amount);
+        // Presale has ended
+        if (raisedAmount >= presaleInfo.softCap) {
+            return PresaleStatus.SUCCESS;
+        }
 
-        _afterTokenTransfer(account, address(0), amount);
+        return PresaleStatus.FAILED;
     }
 
     /**
-     * @dev Sets `amount` as the allowance of `spender` over the `owner` s tokens.
-     *
-     * This internal function is equivalent to `approve`, and can be used to
-     * e.g. set automatic allowances for certain subsystems, etc.
-     *
-     * Emits an {Approval} event.
-     *
-     * Requirements:
-     *
-     * - `owner` cannot be the zero address.
-     * - `spender` cannot be the zero address.
+     * @dev Calculate token amount for given base amount
      */
-    function _approve(
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal virtual {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
-
-        _allowances[owner][spender] = amount;
-        emit Approval(owner, spender, amount);
+    function calculateTokenAmount(uint256 baseAmount) public view returns (uint256) {
+        return baseAmount.mul(presaleInfo.tokenRate).div(10**(18 - tokenInfo.decimals));
     }
 
     /**
-     * @dev Updates `owner` s allowance for `spender` based on spent `amount`.
-     *
-     * Does not update the allowance amount in case of infinite allowance.
-     * Revert if not enough allowance is available.
-     *
-     * Might emit an {Approval} event.
+     * @dev Check if address is whitelisted (considers permanent whitelist and public time)
      */
-    function _spendAllowance(
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal virtual {
-        uint256 currentAllowance = allowance(owner, spender);
-        if (currentAllowance != type(uint256).max) {
-            require(currentAllowance >= amount, "ERC20: insufficient allowance");
-            unchecked {
-                _approve(owner, spender, currentAllowance - amount);
+    function isWhitelisted(address user) public view returns (bool) {
+        if (presaleInfo.presaleType == PresaleType.PUBLIC) {
+            if (presaleInfo.publicTime == 0 || block.timestamp >= presaleInfo.publicTime) {
+                return true;
+            }
+        }
+        return whitelist[user];
+    }
+
+    /**
+     * @dev Get presale progress as percentage (0-100)
+     */
+    function getProgress() public view returns (uint256) {
+        if (presaleInfo.hardCap == 0) return 0;
+        return raisedAmount.mul(100).div(presaleInfo.hardCap);
+    }
+
+    /**
+     * @dev Check if user can participate
+     */
+    function canParticipate(address user, uint256 amount) public view returns (bool, string memory) {
+        if (getStatus() != PresaleStatus.ACTIVE) {
+            return (false, "Presale not active");
+        }
+
+        if (!isWhitelisted(user)) {
+            return (false, "Not whitelisted");
+        }
+
+        if (amount < presaleInfo.raiseMin) {
+            return (false, "Below minimum contribution");
+        }
+
+        uint256 newContribution = buyers[user].baseContribution.add(amount);
+        if (newContribution > presaleInfo.raiseMax) {
+            return (false, "Exceeds maximum contribution");
+        }
+
+        if (raisedAmount.add(amount) > presaleInfo.hardCap) {
+            return (false, "Exceeds hard cap");
+        }
+
+        return (true, "");
+    }
+
+    // ============ CORE FUNCTIONS ============
+
+    /**
+     * @dev Participate in presale by contributing base tokens
+     * @param amount Amount of ERC20 base tokens (ignored for native KLC)
+     */
+    function participate(uint256 amount) external payable nonReentrant onlyWhenActive {
+        bool isNative = (presaleInfo.baseToken == address(0));
+        uint256 contribution = isNative ? msg.value : amount;
+
+        (bool canPart, string memory reason) = canParticipate(msg.sender, contribution);
+        require(canPart, reason);
+
+        // Calculate token allocation
+        uint256 tokenAmount = calculateTokenAmount(contribution);
+        require(tokenAmount > 0, "Zero tokens");
+
+        // Update buyer info
+        BuyerInfo storage buyer = buyers[msg.sender];
+        if (buyer.baseContribution == 0) {
+            participantCount = participantCount.add(1);
+        }
+
+        buyer.baseContribution = buyer.baseContribution.add(contribution);
+        buyer.tokenAllocation = buyer.tokenAllocation.add(tokenAmount);
+
+        // Update global state
+        raisedAmount = raisedAmount.add(contribution);
+        soldTokens = soldTokens.add(tokenAmount);
+
+        // Handle payment
+        if (!isNative) {
+            TransferHelper.safeTransferFrom(presaleInfo.baseToken, msg.sender, address(this), contribution);
+        }
+
+        emit Participated(msg.sender, contribution, tokenAmount);
+    }
+
+    /**
+     * @dev Finalize successful presale - adds liquidity and locks LP tokens
+     */
+    function finalize() external nonReentrant onlyOwner {
+        require(!finalized, "Already finalized");
+        require(getStatus() == PresaleStatus.SUCCESS, "Presale not successful");
+        require(address(router) != address(0), "Router not set");
+
+        bool isNative = (presaleInfo.baseToken == address(0));
+
+        // Calculate liquidity amounts
+        uint256 liquidityBase = raisedAmount.mul(presaleInfo.liquidityPercent).div(100);
+        uint256 liquidityTokens = liquidityBase.mul(presaleInfo.liquidityRate).div(10**(18 - tokenInfo.decimals));
+
+        // Verify sufficient tokens for liquidity
+        require(IERC20(presaleInfo.saleToken).balanceOf(address(this)) >= liquidityTokens, "Insufficient tokens for liquidity");
+
+        // Approve tokens for router
+        TransferHelper.safeApprove(presaleInfo.saleToken, address(router), liquidityTokens);
+
+        uint256 liquidity;
+
+        if (isNative) {
+            // Add KLC liquidity
+            (, , liquidity) = router.addLiquidityKLC{value: liquidityBase}(
+                presaleInfo.saleToken,
+                liquidityTokens,
+                0, // Accept any amount of tokens
+                0, // Accept any amount of KLC
+                address(this), // LP tokens come to this contract
+                block.timestamp + 3600 // 1 hour deadline
+            );
+        } else {
+            // Add ERC20 liquidity
+            TransferHelper.safeApprove(presaleInfo.baseToken, address(router), liquidityBase);
+
+            (, , liquidity) = router.addLiquidity(
+                presaleInfo.baseToken,
+                presaleInfo.saleToken,
+                liquidityBase,
+                liquidityTokens,
+                0, // Accept any amount of base tokens
+                0, // Accept any amount of sale tokens
+                address(this), // LP tokens come to this contract
+                block.timestamp + 3600 // 1 hour deadline
+            );
+        }
+
+        // Lock LP tokens
+        _lockLPTokens(liquidity);
+
+        // Transfer remaining base tokens to owner
+        uint256 remainingBase = isNative ? address(this).balance : IERC20(presaleInfo.baseToken).balanceOf(address(this));
+        if (remainingBase > 0) {
+            TransferHelper.safeTransferBaseToken(presaleInfo.baseToken, payable(owner), remainingBase, !isNative);
+        }
+
+        // Set finalization state
+        finalized = true;
+        tokenUnlockTime = block.timestamp.add(lockDelay);
+
+        emit PresaleFinalized(raisedAmount, liquidityBase);
+    }
+
+    /**
+     * @dev Internal function to lock LP tokens
+     */
+    function _lockLPTokens(uint256 _liquidity) internal {
+        require(_liquidity > 0, "No LP tokens to lock");
+
+        // Get LP token address from router's factory after liquidity has been added
+        address factory = router.factory();
+        address wklc = router.WKLC();
+        address baseTokenAddr = (presaleInfo.baseToken == address(0)) ? wklc : presaleInfo.baseToken;
+
+        // The pair should exist after addLiquidity call - get it from factory
+        lpTokenAddress = IKalySwapFactory(factory).getPair(presaleInfo.saleToken, baseTokenAddr);
+        require(lpTokenAddress != address(0), "LP pair not found");
+
+        // Store LP token info
+        lpTokenAmount = _liquidity;
+
+        // Calculate unlock time
+        if (lpLockDuration == FOREVER_LOCK) {
+            lpUnlockTime = FOREVER_LOCK;
+        } else {
+            lpUnlockTime = block.timestamp.add(lpLockDuration);
+        }
+
+        lpTokensWithdrawn = false;
+
+        emit LPTokensLocked(lpTokenAddress, _liquidity, lpUnlockTime);
+    }
+
+    // ============ WITHDRAWAL FUNCTIONS ============
+
+    /**
+     * @dev Claim purchased tokens after successful presale finalization
+     */
+    function claimTokens() external nonReentrant onlyWhenFinalized {
+        require(block.timestamp >= tokenUnlockTime, "Tokens still locked");
+
+        BuyerInfo storage buyer = buyers[msg.sender];
+        require(buyer.tokenAllocation > 0, "No tokens to claim");
+        require(!buyer.claimed, "Already claimed");
+
+        uint256 tokenAmount = buyer.tokenAllocation;
+        buyer.claimed = true;
+
+        TransferHelper.safeTransfer(presaleInfo.saleToken, msg.sender, tokenAmount);
+
+        emit TokensClaimed(msg.sender, tokenAmount);
+    }
+
+    /**
+     * @dev Claim refund if presale failed
+     */
+    function claimRefund() external nonReentrant {
+        PresaleStatus status = getStatus();
+        require(status == PresaleStatus.FAILED || status == PresaleStatus.CANCELLED, "Presale not failed");
+
+        BuyerInfo storage buyer = buyers[msg.sender];
+        require(buyer.baseContribution > 0, "No contribution to refund");
+        require(!buyer.claimed, "Already claimed");
+
+        uint256 refundAmount = buyer.baseContribution;
+        buyer.claimed = true;
+
+        bool isNative = (presaleInfo.baseToken == address(0));
+        TransferHelper.safeTransferBaseToken(presaleInfo.baseToken, payable(msg.sender), refundAmount, !isNative);
+
+        emit RefundClaimed(msg.sender, refundAmount);
+    }
+
+    /**
+     * @dev Owner withdraws remaining funds after finalization
+     */
+    function withdrawRemainingFunds() external nonReentrant onlyOwner onlyWhenFinalized {
+        // Withdraw any remaining sale tokens
+        uint256 remainingTokens = IERC20(presaleInfo.saleToken).balanceOf(address(this));
+        if (remainingTokens > 0) {
+            TransferHelper.safeTransfer(presaleInfo.saleToken, owner, remainingTokens);
+            emit RemainingFundsWithdrawn(owner, remainingTokens);
+        }
+    }
+
+    /**
+     * @dev Withdraw LP tokens after lock period expires
+     */
+    function withdrawLPTokens() external nonReentrant {
+        require(lpTokenAmount > 0, "No LP tokens to withdraw");
+        require(!lpTokensWithdrawn, "LP tokens already withdrawn");
+        require(msg.sender == lpRecipient, "Only LP recipient can withdraw");
+        require(lpUnlockTime != FOREVER_LOCK, "LP tokens locked forever");
+        require(block.timestamp >= lpUnlockTime, "LP tokens still locked");
+
+        uint256 amount = lpTokenAmount;
+        address lpToken = lpTokenAddress;
+
+        lpTokensWithdrawn = true;
+
+        TransferHelper.safeTransfer(lpToken, lpRecipient, amount);
+
+        emit LPTokensWithdrawn(lpToken, amount, lpRecipient);
+    }
+
+    // ============ ADMIN FUNCTIONS ============
+
+    /**
+     * @dev Set router address (must be called before finalization)
+     */
+    function setRouter(address _router) external onlyOwner {
+        require(_router != address(0), "Invalid router");
+        require(!finalized, "Cannot change after finalization");
+        router = IKalySwapRouter(_router);
+    }
+
+    /**
+     * @dev Set LP lock settings
+     */
+    function setLPLockSettings(uint256 _lockDuration, address _recipient) external onlyOwner {
+        require(!finalized, "Cannot change after finalization");
+        require(_lockDuration >= MIN_LP_LOCK_TIME || _lockDuration == FOREVER_LOCK, "Invalid lock duration");
+        require(_recipient != address(0), "Invalid recipient");
+
+        lpLockDuration = _lockDuration;
+        lpRecipient = _recipient;
+    }
+
+    /**
+     * @dev Set token unlock delay
+     */
+    function setLockDelay(uint256 _delay) external onlyOwner {
+        require(!finalized, "Cannot change after finalization");
+        lockDelay = _delay;
+    }
+
+    /**
+     * @dev Set presale type and public time
+     */
+    function setPresaleType(PresaleType _type, uint256 _publicTime) external onlyOwner {
+        require(getStatus() == PresaleStatus.PENDING, "Presale already started");
+        presaleInfo.presaleType = _type;
+        presaleInfo.publicTime = _publicTime;
+    }
+
+    /**
+     * @dev Add addresses to whitelist
+     */
+    function addToWhitelist(address[] calldata users, bool isPermanent) external onlyOwner {
+        for (uint256 i = 0; i < users.length; i++) {
+            whitelist[users[i]] = true;
+            if (isPermanent) {
+                permanentWhitelist[users[i]] = true;
             }
         }
     }
 
     /**
-     * @dev Hook that is called before any transfer of tokens. This includes
-     * minting and burning.
-     *
-     * Calling conditions:
-     *
-     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * will be transferred to `to`.
-     * - when `from` is zero, `amount` tokens will be minted for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
-     * - `from` and `to` are never both zero.
-     *
-     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
+     * @dev Remove addresses from whitelist (cannot remove permanent)
      */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual {}
+    function removeFromWhitelist(address[] calldata users) external onlyOwner {
+        for (uint256 i = 0; i < users.length; i++) {
+            if (!permanentWhitelist[users[i]]) {
+                whitelist[users[i]] = false;
+            }
+        }
+    }
 
     /**
-     * @dev Hook that is called after any transfer of tokens. This includes
-     * minting and burning.
-     *
-     * Calling conditions:
-     *
-     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * has been transferred to `to`.
-     * - when `from` is zero, `amount` tokens have been minted for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens have been burned.
-     * - `from` and `to` are never both zero.
-     *
-     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
+     * @dev Cancel presale (only before finalization)
      */
-    function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual {}
-}
-
-contract Presale is OwnableUpgradeable {
-
-    mapping(address => uint256) _userInfo;
-    mapping(address => bool) _whitelistInfo;
-    address [1000000] _users;
-    address _owner;
-    address private _tokenAddr; 
-    uint256 private _softCap;
-    uint256 private _hardCap;
-    uint256 private _startTime;
-    uint256 private _endTime;
-    uint256 private _count;
-    uint256 private _maxBid;
-    uint256 private _minBid;
-    uint256 private _tokenRate;
-    bool private _isCanceled;
-    uint8 _type;
-    bool private _whitelisting;
-    bool private _public;
-    
-    uint256 private _publicTime;
-
-    modifier IsAvailable (uint256 price_) {
-        require( price_ >= _minBid && price_ <= _maxBid, "Invalid Number" );
-        _;
+    function cancelPresale() external onlyOwner {
+        require(!finalized, "Cannot cancel after finalization");
+        cancelled = true;
+        emit PresaleCancelled();
     }
 
-    modifier IsBid (address userAddr_) {
-        require( _userInfo[userAddr_] == 0, "You should bid only once" );
-        _;
-    }
-
-    modifier IsNotCanceled() {
-        require( _isCanceled == false, "Presale is finished" );
-        _;
-    }
-
-    modifier IsCanceled() {
-        require(_isCanceled == true, "Presale is not finished");
-        _;
-    }
-
-    modifier checkWhitelist(address userAddr_) {
-        if(_whitelisting == true) {
-            require(_whitelistInfo[userAddr_] == true, "You are not in Whitelist");
-            _;
-        } else {
-            _;
-        }
-    }
-
-    modifier IsWhitelist() { 
-        require(_whitelisting == true, "Whitelist didn't set");
-        _;
-    }
-
-    modifier IsPublic() {
-        require(_public == true, "Public didn't set");
-        _;
-    }
-
-    modifier IsNotPublic() {
-        require(_public == false, "Public already set");
-        _;
-    }
-
-    constructor(
-        uint256 softCap_, uint256 hardCap_, uint256 startTime_, uint256 tokenRate_, address tokenAddr_
-    ) {
-        _softCap = softCap_;
-        _hardCap = hardCap_;
-        _startTime = startTime_;
-        _tokenRate = tokenRate_;
-        _tokenAddr = tokenAddr_;
-        _isCanceled = false;
-    }
-
-    function initialize(address owner_, uint256 softCap_, uint256 hardCap_, uint256 max_, uint256 min_, uint256 startTime_, uint256 endTime_, uint256 tokenRate_, address tokenAddr_, bool isWhitelist) external initializer {
-        _softCap = softCap_;
-        _hardCap = hardCap_;
-        _startTime = startTime_;
-        _endTime = endTime_;
-        _tokenRate = tokenRate_;
-        _tokenAddr = tokenAddr_;
-        _public = true;
-        _isCanceled = false;
-        _maxBid = max_;
-        _minBid = min_;
-        _whitelisting = isWhitelist;
-        OwnableUpgradeable.__Ownable_init();
-        transferOwnership(owner_);
-    }
-
-    function Bid() public payable checkWhitelist(msg.sender) IsNotCanceled IsAvailable(msg.value) {
-        if(_userInfo[msg.sender] > 0) {
-            _userInfo[msg.sender] += msg.value;
-        } else {
-            _users[ _count ] = msg.sender;
-            _userInfo[ msg.sender ] = msg.value;
-            _count ++;
-        }
-    }
-
-    function Finalize() public IsNotCanceled onlyOwner {
-        // payable(serviceFeeReceiver_).transfer(serviceFee_);
-        payable(msg.sender).transfer(address(this).balance);
-        ERC20 tok = ERC20(_tokenAddr);
-        for(uint256 i = 0 ; i < _count ; i ++) {
-            tok.transferFrom(address(this), _users[i], _userInfo[_users[i]] * _tokenRate / (10 ** 18));
-        }
-        _isCanceled = true;
-    }
-
-    function Cancel() public IsNotCanceled onlyOwner {
-//        ERC20 tok = ERC20(_tokenAddr);
-        for(uint256 i = 0 ; i < _count ; i ++) {
-            payable(_users[i]).transfer(_userInfo[_users[i]]);
-        }
-        _count = 0;
-        _isCanceled = true;
-    }
-
-    function withdraw() public IsCanceled onlyOwner {
-        ERC20 tok = ERC20(_tokenAddr);
-        tok.transferFrom(address(this), _owner, tok.balanceOf(address(this)));
-    }
-
-    function checkPresale() public view onlyOwner returns (uint8) {
-        uint256 balance = address(this).balance;
-        if(balance < _softCap) {
-            return 0;
-        }
-        if(balance >= _hardCap) {
-            return 2;
-        }
-        return 1;
-    }
-
-    function getStartTime() public view virtual returns(uint256) {
-        return _startTime;
-    }
-
-    function getEndTime() public view virtual returns(uint256) {
-        return _endTime;
-    }
-
-    function getUserState(address userAddr_) public view virtual returns(bool) {
-        if(_userInfo[userAddr_] != 0) return false;
-        return true;
-    }
-
-    function getTotalSupply() public view virtual returns(uint256) {
-        return address(this).balance;
-    }
-
-    function getTokenTotalSupply() public view virtual returns(uint256) {
-        return ERC20(_tokenAddr).totalSupply();
-    }
-
-    function setRange(uint256 min_, uint256 max_) public onlyOwner{
-        _minBid = min_;
-        _maxBid = max_;
-    }
-
-    function setWhitelist() public onlyOwner {
-        _whitelisting = true;
-        _public = false;
-    }
-
-    function disableWhitelist() public IsWhitelist onlyOwner {
-        _whitelisting = false;
-    }
-    
-    function addWhitelistAddr(address user) public IsWhitelist onlyOwner {
-        _whitelistInfo[user] = true;
-    }
-    
-    function addWhitelistAddrArray(address[] memory user) public IsWhitelist onlyOwner {
-        for(uint i = 0 ; i < user.length ; i ++) {
-            addWhitelistAddr(user[i]);
-        }
-    }
-
-    function removeWhitelistAddr(address user) public onlyOwner {
-        require(_whitelistInfo[user] == true, "User not found");
-        _whitelistInfo[user] = false;
-    }
-
-    function removeWhitelistAddrArray(address[] memory user) public IsWhitelist onlyOwner {
-        for(uint i = 0 ; i < user.length ; i ++) {
-            removeWhitelistAddr(user[i]);
-        }
-    }
-
-    function setPublic(uint256 date_) public IsNotPublic onlyOwner {
-        _public = true;
-        _whitelisting = false;
-        _publicTime = date_;
-    }
-
-    function setDisablePublic() public IsPublic onlyOwner {
-        _public = false;
-    }
-
-    function getIsWhitelist() public view virtual returns (bool) {
-        return _whitelisting;
+    /**
+     * @dev Transfer ownership
+     */
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Invalid new owner");
+        owner = newOwner;
     }
 }

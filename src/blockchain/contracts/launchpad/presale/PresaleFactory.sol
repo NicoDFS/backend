@@ -1,37 +1,94 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity >= 0.7.6;
+// SPDX-License-Identifier: MIT
+pragma solidity >= 0.8.0;
 
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import "./Presale.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "../interfaces/IPresale.sol";
-import "./TokenFactoryBase.sol";
 
-contract PresaleFactory is TokenFactoryBase {
+contract PresaleFactory {
   using Address for address payable;
   using SafeMath for uint256;
 
-  constructor(address implementation_) TokenFactoryBase(implementation_) {
+  address public feeTo;
+  address _owner;
+  uint256 public flatFee;
+
+
+  modifier enoughFee() {
+    require(msg.value >= flatFee, "Flat fee");
+    _;
   }
 
+  modifier onlyOwner {
+    require(msg.sender == _owner, "You are not owner");
+    _;
+  }
+
+  constructor() {
+    feeTo = msg.sender;
+    flatFee = 200_000_000_000_000 gwei;
+    _owner = msg.sender;
+  }
+
+  function setFeeTo(address feeReceivingAddress) external onlyOwner {
+    feeTo = feeReceivingAddress;
+  }
+
+  function setFlatFee(uint256 fee) external onlyOwner {
+    flatFee = fee;
+  }
+
+  function getFeeTo() public view returns(address ) {
+    return feeTo;
+  }
+
+  function getFlatFee() public view returns(uint256 ) {
+    return flatFee;
+  }
+
+  function transferOwner(address to) public onlyOwner {
+    _owner = to;
+  }
+
+  function refundExcessiveFee() internal {
+    uint256 refund = msg.value.sub(flatFee);
+    if (refund > 0) {
+      payable(msg.sender).sendValue(refund);
+    }
+  }
+
+  function sendValue(address _token, address to, uint256 _hardcap, uint256 _liquidity_rate, uint256 _liquidityPercent, uint256 _token_rate) private  {
+    uint256 listing = _hardcap.mul(_liquidity_rate).mul(_liquidityPercent).div(100);
+    uint256 value = _hardcap.mul(_token_rate).add(listing);
+    value = value.div(10 ** (18 - IERC20(_token).decimals()));
+    // value.div(10 ** 18);
+    IERC20(_token).transferFrom(msg.sender, to, value);
+  }
   function create(
-    uint256 softCap_, 
-    uint256 hardCap_, 
-    uint256 max_, 
-    uint256 min_, 
-    uint256 startTime_, 
-    uint256 endTime_, 
-    uint256 tokenRate_, 
-    address tokenAddr_,
-    bool whitelist_
-  ) external payable enoughFee nonReentrant returns (address token) {
+    address _sale_token,
+    address _base_token, // Pool base token : DAI, USDT, USDC
+    uint256[2] memory _rates, // 0: token_rate, 1: liquidity_rate
+    uint256[2] memory _raises, // 0: min, 1: max
+    uint256 _softcap,
+    uint256 _hardcap,
+    uint256 _liquidityPercent,
+    uint256 _presale_start,
+    uint256 _presale_end
+  ) external virtual payable enoughFee returns (address) {
     refundExcessiveFee();
-    payable(feeTo).sendValue(flatFee);
-    token = Clones.clone(implementation);
-    IPresale(token).initialize(
-      msg.sender, softCap_, hardCap_, max_, min_, startTime_, endTime_, tokenRate_, tokenAddr_, whitelist_
+    Presale newToken = new Presale(
+      msg.sender,
+      _sale_token,
+      _base_token,
+      _rates[0], _rates[1],
+      _raises[0], _raises[1],
+      _softcap, _hardcap, _liquidityPercent,
+      _presale_start, _presale_end
     );
 
-    emit PresaleCreated(msg.sender, token, 0);
+    // const value = hardcap * presale * 1.02 + 0.98 * hardcap * listing * liquidity / 100
+    // uint256 value = _selling_amount + _selling_amount.mul(_liquidityPercent).div(100);
+    sendValue(_sale_token, address(newToken), _hardcap, _rates[1], _liquidityPercent, _rates[0]);
+    payable(feeTo).transfer(flatFee);
+    return address(newToken);
   }
 }

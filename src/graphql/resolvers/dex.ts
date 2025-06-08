@@ -56,6 +56,30 @@ export const dexResolvers = {
       { dexService }: Context
     ) => {
       return dexService.getDexDayData(first, skip);
+    },
+
+    pairDayData: async (
+      _: any,
+      { first, skip }: { first?: number; skip?: number },
+      { dexService }: Context
+    ) => {
+      return dexService.getPairDayData(first, skip);
+    },
+
+    router: async (_: any, __: any, { dexService }: Context) => {
+      return dexService.getRouter();
+    },
+
+    routerSwaps: async (
+      _: any,
+      { first, skip }: { first?: number; skip?: number },
+      { dexService }: Context
+    ) => {
+      return dexService.getRouterSwaps(first, skip);
+    },
+
+    lpStakingData: async (_: any, __: any, { dexService }: Context) => {
+      return dexService.getLPStakingData();
     }
   }
 };
