@@ -8,7 +8,7 @@ import {
   WhitelistedPool,
   Pair
 } from '../generated/schema';
-import { ZERO_BI, ONE_BI } from './helpers';
+import { ZERO_BI, ONE_BI } from './constants';
 
 // Known whitelisted pool addresses based on the live frontend
 const WHITELISTED_POOLS: string[] = [
@@ -124,7 +124,7 @@ function loadWhitelistedPools(
     if (!isWhitelistedResult.reverted && isWhitelistedResult.value) {
       // Get the weight for this pair
       let weightResult = contract.try_weights(pairAddress);
-      let weight = weightResult.reverted ? ZERO_BI : weightResult.value;
+      let weight = weightResult.reverted ? BigInt.fromI32(0) : weightResult.value;
 
       // Create the whitelisted pool entity
       let poolId = manager.id + '-' + pairAddress.toHexString();

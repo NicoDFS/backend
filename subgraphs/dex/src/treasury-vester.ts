@@ -9,9 +9,8 @@ import {
   TreasuryVester as TreasuryVesterEntity,
   TokensVestedEvent
 } from '../generated/schema';
-import { ZERO_BI, ONE_BI } from './helpers';
 
-// Helper function to get or create the treasury vester
+// Enhanced helper function with safe contract calls
 function getOrCreateTreasuryVester(address: Address, block: ethereum.Block): TreasuryVesterEntity {
   let vester = TreasuryVesterEntity.load(address.toHexString());
 
@@ -21,7 +20,7 @@ function getOrCreateTreasuryVester(address: Address, block: ethereum.Block): Tre
     vester.createdAt = block.timestamp;
     vester.updatedAt = block.timestamp;
 
-    // Load contract data
+    // Load contract data with try/catch
     let contract = TreasuryVester.bind(address);
 
     // Get KSWAP address
@@ -45,20 +44,20 @@ function getOrCreateTreasuryVester(address: Address, block: ethereum.Block): Tre
     if (!vestingAmountResult.reverted) {
       vester.vestingAmount = vestingAmountResult.value;
     } else {
-      vester.vestingAmount = ZERO_BI;
+      vester.vestingAmount = BigInt.fromI32(0);
     }
 
     // Set default values for vesting timestamps
-    vester.vestingBegin = ZERO_BI;
-    vester.vestingCliff = ZERO_BI;
-    vester.vestingEnd = ZERO_BI;
+    vester.vestingBegin = BigInt.fromI32(0);
+    vester.vestingCliff = BigInt.fromI32(0);
+    vester.vestingEnd = BigInt.fromI32(0);
 
     // Get last update timestamp
     let lastUpdateResult = contract.try_lastUpdate();
     if (!lastUpdateResult.reverted) {
       vester.lastUpdate = lastUpdateResult.value;
     } else {
-      vester.lastUpdate = ZERO_BI;
+      vester.lastUpdate = BigInt.fromI32(0);
     }
 
     // Get vesting enabled flag

@@ -8,19 +8,13 @@ import {
   SwapExactTokensForTokensSupportingFeeOnTransferTokensCall,
   SwapExactTokensForKLCSupportingFeeOnTransferTokensCall
 } from '../generated/KalyswapRouter/KalyswapRouter';
-import { Router, RouterSwap, Factory, Pair, Token } from '../generated/schema';
+import { Router, RouterSwap, Pair, Token } from '../generated/schema';
 import { KalyswapFactory } from '../generated/KalyswapRouter/KalyswapFactory';
 import { KalyswapPair } from '../generated/KalyswapRouter/KalyswapPair';
 import { ERC20 } from '../generated/KalyswapRouter/ERC20';
-import { 
-  ZERO_BD, 
-  ZERO_BI, 
-  ONE_BI, 
-  convertTokenToDecimal, 
-  getKLCPriceInUSD,
-  WKLC_ADDRESS,
-  FACTORY_ADDRESS
-} from './helpers';
+import { ZERO_BD, ZERO_BI, ONE_BI, WKLC_ADDRESS, FACTORY_ADDRESS } from './constants';
+import { convertTokenToDecimal } from './helpers';
+import { getKlcPriceInUSD } from './pricing';
 
 // Initialize Router entity
 function getOrCreateRouter(address: Address, block: ethereum.Block): Router {
@@ -61,7 +55,7 @@ function calculateSwapVolumeUSD(
     return ZERO_BD;
   }
   
-  let klcPrice = getKLCPriceInUSD();
+  let klcPrice = getKlcPriceInUSD();
   let volumeUSD = ZERO_BD;
   
   // Get token information
@@ -118,8 +112,8 @@ function createRouterSwap(
   }
   routerSwap.path = pathBytes;
   
-  routerSwap.amountIn = convertTokenToDecimal(amountIn, 18); // Default to 18 decimals
-  routerSwap.amountOut = convertTokenToDecimal(amountOut, 18);
+  routerSwap.amountIn = convertTokenToDecimal(amountIn, BigInt.fromI32(18)); // Default to 18 decimals
+  routerSwap.amountOut = convertTokenToDecimal(amountOut, BigInt.fromI32(18));
   
   // Calculate USD values
   let volumeUSD = calculateSwapVolumeUSD(path, amountIn, amountOut, true);
@@ -137,7 +131,7 @@ function createRouterSwap(
   // Update router totals
   router.totalSwaps = router.totalSwaps.plus(ONE_BI);
   router.totalVolumeUSD = router.totalVolumeUSD.plus(volumeUSD);
-  router.totalVolumeKLC = router.totalVolumeKLC.plus(volumeUSD.div(getKLCPriceInUSD()));
+  router.totalVolumeKLC = router.totalVolumeKLC.plus(volumeUSD.div(getKlcPriceInUSD()));
   router.updatedAt = call.block.timestamp;
   router.save();
   

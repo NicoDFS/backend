@@ -20,7 +20,7 @@ services:
       ethereum: 'kalychain:https://rpc.kalychain.io/rpc'
       GRAPH_LOG: info
       GRAPH_ALLOW_NON_DETERMINISTIC_IPFS: 'true'
-      GRAPH_ETHEREUM_GENESIS_BLOCK_NUMBER: '20992295'
+      GRAPH_ETHEREUM_GENESIS_BLOCK_NUMBER: '6880000'
 
   ipfs:
     image: ipfs/go-ipfs:v0.10.0

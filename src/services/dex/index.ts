@@ -27,40 +27,76 @@ export const DexService = {
     if (USE_MOCK_DATA) {
       return {
         id: FACTORY_ADDRESS.toLowerCase(),
-        address: FACTORY_ADDRESS,
         pairCount: 10,
         totalVolumeUSD: '1000000',
         totalVolumeKLC: '500000',
         totalLiquidityUSD: '2000000',
         totalLiquidityKLC: '1000000',
-        txCount: '5000',
-        feeTo: null,
-        feeToSetter: '0x1234567890123456789012345678901234567890'
+        untrackedVolumeUSD: '50000',
+        txCount: '5000'
       };
     }
 
-    const query = gql`
+    // Try new schema first, fallback to old schema
+    const newSchemaQuery = gql`
+      query {
+        kalyswapFactory(id: "${FACTORY_ADDRESS.toLowerCase()}") {
+          id
+          pairCount
+          totalVolumeKLC
+          totalLiquidityKLC
+          totalVolumeUSD
+          untrackedVolumeUSD
+          totalLiquidityUSD
+          txCount
+        }
+      }
+    `;
+
+    const oldSchemaQuery = gql`
       query {
         factory(id: "${FACTORY_ADDRESS.toLowerCase()}") {
           id
-          address
           pairCount
           totalVolumeUSD
           totalVolumeKLC
           totalLiquidityUSD
           totalLiquidityKLC
           txCount
-          feeTo
-          feeToSetter
         }
       }
     `;
 
     try {
-      const { factory } = await dexClient.request(query);
+      // Try new schema first
+      let factory = null;
+      try {
+        const result = await dexClient.request(newSchemaQuery);
+        factory = result.kalyswapFactory;
+        console.log('KalyswapFactory data from subgraph (new schema):', JSON.stringify(factory, null, 2));
+      } catch (newSchemaError) {
+        console.log('New schema failed, trying old schema...');
 
-      // Debug log to see what data is being returned
-      console.log('Factory data from subgraph:', JSON.stringify(factory, null, 2));
+        // Fallback to old schema
+        try {
+          const result = await dexClient.request(oldSchemaQuery);
+          factory = result.factory;
+          console.log('Factory data from subgraph (old schema):', JSON.stringify(factory, null, 2));
+
+          // Add missing fields for compatibility
+          if (factory) {
+            factory.untrackedVolumeUSD = factory.untrackedVolumeUSD || '0';
+          }
+        } catch (oldSchemaError) {
+          console.error('Both schemas failed:', { newSchemaError, oldSchemaError });
+          return null;
+        }
+      }
+
+      if (!factory) {
+        console.warn('Warning: factory not found in subgraph');
+        return null;
+      }
 
       // Check if totalLiquidityUSD and totalLiquidityKLC are valid
       if (!factory.totalLiquidityUSD || factory.totalLiquidityUSD === '0') {
@@ -102,7 +138,50 @@ export const DexService = {
       ];
     }
 
-    const query = gql`
+    const newSchemaQuery = gql`
+      query getPairs($first: Int!, $skip: Int!, $orderBy: String!, $orderDirection: String!) {
+        pairs(
+          first: $first,
+          skip: $skip,
+          orderBy: $orderBy,
+          orderDirection: $orderDirection
+        ) {
+          id
+          token0 {
+            id
+            symbol
+            name
+            decimals
+            derivedKLC
+          }
+          token1 {
+            id
+            symbol
+            name
+            decimals
+            derivedKLC
+          }
+          reserve0
+          reserve1
+          totalSupply
+          reserveKLC
+          reserveUSD
+          trackedReserveKLC
+          token0Price
+          token1Price
+          volumeToken0
+          volumeToken1
+          volumeUSD
+          untrackedVolumeUSD
+          txCount
+          createdAtTimestamp
+          createdAtBlockNumber
+          liquidityProviderCount
+        }
+      }
+    `;
+
+    const oldSchemaQuery = gql`
       query getPairs($first: Int!, $skip: Int!, $orderBy: String!, $orderDirection: String!) {
         pairs(
           first: $first,
@@ -139,7 +218,38 @@ export const DexService = {
     `;
 
     try {
-      const { pairs } = await dexClient.request(query, { first, skip, orderBy, orderDirection });
+      // Try new schema first
+      let pairs = [];
+      try {
+        const result = await dexClient.request(newSchemaQuery, { first, skip, orderBy, orderDirection });
+        pairs = result.pairs || [];
+        console.log(`Pairs data from subgraph (new schema): ${pairs.length} pairs found`);
+      } catch (newSchemaError) {
+        console.log('New schema failed for pairs, trying old schema...');
+
+        // Fallback to old schema
+        try {
+          const result = await dexClient.request(oldSchemaQuery, { first, skip, orderBy, orderDirection });
+          pairs = result.pairs || [];
+          console.log(`Pairs data from subgraph (old schema): ${pairs.length} pairs found`);
+
+          // Add missing fields for compatibility
+          pairs = pairs.map(pair => ({
+            ...pair,
+            totalSupply: pair.totalSupply || '0',
+            trackedReserveKLC: pair.trackedReserveKLC || pair.reserveKLC || '0',
+            volumeToken0: pair.volumeToken0 || '0',
+            volumeToken1: pair.volumeToken1 || '0',
+            untrackedVolumeUSD: pair.untrackedVolumeUSD || '0',
+            createdAtTimestamp: pair.createdAt || '0',
+            createdAtBlockNumber: pair.createdAtBlockNumber || '0',
+            liquidityProviderCount: pair.liquidityProviderCount || '0'
+          }));
+        } catch (oldSchemaError) {
+          console.error('Both schemas failed for pairs:', { newSchemaError, oldSchemaError });
+          return [];
+        }
+      }
 
       // Process pairs to handle duplicates
       const processedPairs = this.handleDuplicatePairs(pairs);
@@ -172,7 +282,46 @@ export const DexService = {
       };
     }
 
-    const query = gql`
+    // Try new schema first, fallback to basic pair data
+    const newSchemaQuery = gql`
+      query getPair($id: ID!) {
+        pair(id: $id) {
+          id
+          token0 {
+            id
+            symbol
+            name
+            decimals
+            derivedKLC
+          }
+          token1 {
+            id
+            symbol
+            name
+            decimals
+            derivedKLC
+          }
+          reserve0
+          reserve1
+          totalSupply
+          reserveKLC
+          reserveUSD
+          trackedReserveKLC
+          token0Price
+          token1Price
+          volumeToken0
+          volumeToken1
+          volumeUSD
+          untrackedVolumeUSD
+          txCount
+          createdAtTimestamp
+          createdAtBlockNumber
+          liquidityProviderCount
+        }
+      }
+    `;
+
+    const oldSchemaQuery = gql`
       query getPair($id: ID!) {
         pair(id: $id) {
           id
@@ -199,41 +348,43 @@ export const DexService = {
           token1Price
           txCount
           createdAt
-          mints(first: 10, orderBy: timestamp, orderDirection: desc) {
-            id
-            sender
-            amount0
-            amount1
-            amountUSD
-            timestamp
-            transactionHash
-          }
-          burns(first: 10, orderBy: timestamp, orderDirection: desc) {
-            id
-            sender
-            amount0
-            amount1
-            amountUSD
-            timestamp
-            transactionHash
-          }
-          swaps(first: 10, orderBy: timestamp, orderDirection: desc) {
-            id
-            sender
-            amount0In
-            amount1In
-            amount0Out
-            amount1Out
-            amountUSD
-            timestamp
-            transactionHash
-          }
         }
       }
     `;
 
     try {
-      const { pair } = await dexClient.request(query, { id });
+      // Try new schema first
+      let pair = null;
+      try {
+        const result = await dexClient.request(newSchemaQuery, { id });
+        pair = result.pair;
+        console.log(`Pair data from subgraph (new schema) for ${id}:`, pair ? 'found' : 'not found');
+      } catch (newSchemaError) {
+        console.log(`New schema failed for pair ${id}, trying old schema...`);
+
+        // Fallback to old schema
+        try {
+          const result = await dexClient.request(oldSchemaQuery, { id });
+          pair = result.pair;
+          console.log(`Pair data from subgraph (old schema) for ${id}:`, pair ? 'found' : 'not found');
+
+          // Add missing fields for compatibility
+          if (pair) {
+            pair.totalSupply = pair.totalSupply || '0';
+            pair.trackedReserveKLC = pair.trackedReserveKLC || pair.reserveKLC || '0';
+            pair.volumeToken0 = pair.volumeToken0 || '0';
+            pair.volumeToken1 = pair.volumeToken1 || '0';
+            pair.untrackedVolumeUSD = pair.untrackedVolumeUSD || '0';
+            pair.createdAtTimestamp = pair.createdAt || '0';
+            pair.createdAtBlockNumber = pair.createdAtBlockNumber || '0';
+            pair.liquidityProviderCount = pair.liquidityProviderCount || '0';
+          }
+        } catch (oldSchemaError) {
+          console.error(`Both schemas failed for pair ${id}:`, { newSchemaError, oldSchemaError });
+          return null;
+        }
+      }
+
       return pair;
     } catch (error) {
       console.error(`Error fetching pair ${id}:`, error);
@@ -278,8 +429,11 @@ export const DexService = {
           symbol
           name
           decimals
+          totalSupply
           tradeVolume
           tradeVolumeUSD
+          untrackedVolumeUSD
+          txCount
           totalLiquidity
           derivedKLC
         }
@@ -315,8 +469,11 @@ export const DexService = {
           symbol
           name
           decimals
+          totalSupply
           tradeVolume
           tradeVolumeUSD
+          untrackedVolumeUSD
+          txCount
           totalLiquidity
           derivedKLC
           pairs {
@@ -431,14 +588,16 @@ export const DexService = {
       return {
         id: TREASURY_VESTER_ADDRESS.toLowerCase(),
         address: TREASURY_VESTER_ADDRESS,
-        recipient: LIQUIDITY_POOL_MANAGER_ADDRESS,
         kswap: KSWAP_ADDRESS,
+        recipient: LIQUIDITY_POOL_MANAGER_ADDRESS,
         vestingAmount: '100000000000000000000000', // 100,000 KSWAP
         vestingBegin: '1625097600', // Unix timestamp
         vestingCliff: '1625097600', // Unix timestamp
         vestingEnd: '1656633600', // Unix timestamp
         lastUpdate: '1625097600', // Unix timestamp
-        enabled: true
+        vestingEnabled: true,
+        createdAt: '1625097600',
+        updatedAt: '1625097600'
       };
     }
 
@@ -447,14 +606,16 @@ export const DexService = {
         treasuryVester(id: "${TREASURY_VESTER_ADDRESS.toLowerCase()}") {
           id
           address
-          recipient
           kswap
+          recipient
           vestingAmount
           vestingBegin
           vestingCliff
           vestingEnd
           lastUpdate
-          enabled
+          vestingEnabled
+          createdAt
+          updatedAt
         }
       }
     `;
@@ -1611,6 +1772,143 @@ export const DexService = {
         topPairs: [],
         klcPrice: 0.001221
       };
+    }
+  },
+
+  // Router related queries
+  async getRouter() {
+    if (USE_MOCK_DATA) {
+      return {
+        id: ROUTER_ADDRESS.toLowerCase(),
+        address: ROUTER_ADDRESS,
+        factory: FACTORY_ADDRESS,
+        WKLC: WKLC_ADDRESS,
+        totalSwaps: '1000',
+        totalVolumeUSD: '500000',
+        totalVolumeKLC: '250000',
+        createdAt: '1625097600',
+        updatedAt: '1625097600'
+      };
+    }
+
+    const query = gql`
+      query {
+        router(id: "${ROUTER_ADDRESS.toLowerCase()}") {
+          id
+          address
+          factory
+          WKLC
+          totalSwaps
+          totalVolumeUSD
+          totalVolumeKLC
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    try {
+      const { router } = await dexClient.request(query);
+      return router;
+    } catch (error) {
+      console.error('Error fetching router:', error);
+      return null;
+    }
+  },
+
+  async getRouterSwaps(first = 50, skip = 0) {
+    if (USE_MOCK_DATA) {
+      return [
+        {
+          id: '0x1234567890123456789012345678901234567890-0',
+          router: {
+            id: ROUTER_ADDRESS.toLowerCase()
+          },
+          transactionHash: '0x1234567890123456789012345678901234567890',
+          sender: '0x1234567890123456789012345678901234567890',
+          recipient: '0x1234567890123456789012345678901234567890',
+          path: [WKLC_ADDRESS, KSWAP_ADDRESS],
+          amountIn: '1000000000000000000',
+          amountOut: '5000000000000000000',
+          amountInUSD: '1.22',
+          amountOutUSD: '6.10',
+          swapType: 'exactTokensForTokens',
+          timestamp: '1625097600',
+          blockNumber: '6880000'
+        }
+      ];
+    }
+
+    const query = gql`
+      query getRouterSwaps($first: Int!, $skip: Int!) {
+        routerSwaps(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+          id
+          router {
+            id
+          }
+          transactionHash
+          sender
+          recipient
+          path
+          amountIn
+          amountOut
+          amountInUSD
+          amountOutUSD
+          swapType
+          timestamp
+          blockNumber
+        }
+      }
+    `;
+
+    try {
+      const { routerSwaps } = await dexClient.request(query, { first, skip });
+      return routerSwaps;
+    } catch (error) {
+      console.error('Error fetching router swaps:', error);
+      return [];
+    }
+  },
+
+  async getTokensVestedEvents(first = 50, skip = 0) {
+    if (USE_MOCK_DATA) {
+      return [
+        {
+          id: '0x1234567890123456789012345678901234567890-0',
+          vester: {
+            id: TREASURY_VESTER_ADDRESS.toLowerCase()
+          },
+          amount: '1000000000000000000000',
+          recipient: LIQUIDITY_POOL_MANAGER_ADDRESS,
+          timestamp: '1625097600',
+          blockNumber: '6880000',
+          transactionHash: '0x1234567890123456789012345678901234567890'
+        }
+      ];
+    }
+
+    const query = gql`
+      query getTokensVestedEvents($first: Int!, $skip: Int!) {
+        tokensVestedEvents(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+          id
+          vester {
+            id
+          }
+          amount
+          recipient
+          timestamp
+          blockNumber
+          transactionHash
+        }
+      }
+    `;
+
+    try {
+      const { tokensVestedEvents } = await dexClient.request(query, { first, skip });
+      return tokensVestedEvents;
+    } catch (error) {
+      console.error('Error fetching tokens vested events:', error);
+      return [];
     }
   }
 };

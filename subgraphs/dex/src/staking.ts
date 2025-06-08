@@ -15,10 +15,10 @@ import {
   RewardEvent,
   RewardAddedEvent,
   Token,
-  Factory
+  KalyswapFactory
 } from '../generated/schema';
 import { ERC20 } from '../generated/StakingRewards/ERC20';
-import { ZERO_BI, ONE_BI, FACTORY_ADDRESS } from './helpers';
+import { ZERO_BI, ZERO_BD, ONE_BI, FACTORY_ADDRESS } from './constants';
 
 // Helper function to get or create the staking pool
 function getOrCreateStakingPool(address: Address, block: ethereum.Block): StakingPool {
@@ -40,21 +40,7 @@ function getOrCreateStakingPool(address: Address, block: ethereum.Block): Stakin
     let contract = StakingRewards.bind(address);
 
     // Load or create factory
-    let factory = Factory.load(FACTORY_ADDRESS);
-    if (factory === null) {
-      // Create a new factory if it doesn't exist yet
-      factory = new Factory(FACTORY_ADDRESS);
-      factory.address = Address.fromString(FACTORY_ADDRESS);
-      factory.pairCount = 0;
-      factory.totalVolumeUSD = ZERO_BI.toBigDecimal();
-      factory.totalVolumeKLC = ZERO_BI.toBigDecimal();
-      factory.totalLiquidityUSD = ZERO_BI.toBigDecimal();
-      factory.totalLiquidityKLC = ZERO_BI.toBigDecimal();
-      factory.txCount = ZERO_BI;
-      factory.createdAt = block.timestamp;
-      factory.updatedAt = block.timestamp;
-      factory.save();
-    }
+    // Factory creation is handled in factory.ts, we don't need to create it here
 
     // Get staking token
     let stakingTokenAddress = contract.stakingToken();
@@ -62,8 +48,7 @@ function getOrCreateStakingPool(address: Address, block: ethereum.Block): Stakin
     if (stakingToken === null) {
       // If token doesn't exist in our system yet, create a placeholder
       stakingToken = new Token(stakingTokenAddress.toHexString());
-      stakingToken.factory = factory.id; // Set the factory field
-      stakingToken.address = stakingTokenAddress;
+      // Remove factory and address fields as they don't exist in new schema
 
       // Try to get token details
       let tokenContract = ERC20.bind(stakingTokenAddress);
@@ -83,26 +68,24 @@ function getOrCreateStakingPool(address: Address, block: ethereum.Block): Stakin
 
       let decimalsResult = tokenContract.try_decimals();
       if (!decimalsResult.reverted) {
-        stakingToken.decimals = decimalsResult.value;
+        stakingToken.decimals = BigInt.fromI32(decimalsResult.value);
       } else {
-        stakingToken.decimals = 18;
+        stakingToken.decimals = BigInt.fromI32(18);
       }
 
       let totalSupplyResult = tokenContract.try_totalSupply();
       if (!totalSupplyResult.reverted) {
         stakingToken.totalSupply = totalSupplyResult.value;
       } else {
-        stakingToken.totalSupply = ZERO_BI;
+        stakingToken.totalSupply = BigInt.fromI32(0);
       }
 
-      stakingToken.tradeVolume = ZERO_BI.toBigDecimal();
-      stakingToken.tradeVolumeUSD = ZERO_BI.toBigDecimal();
-      stakingToken.untrackedVolumeUSD = ZERO_BI.toBigDecimal();
+      stakingToken.tradeVolume = ZERO_BD;
+      stakingToken.tradeVolumeUSD = ZERO_BD;
+      stakingToken.untrackedVolumeUSD = ZERO_BD;
       stakingToken.txCount = ZERO_BI;
-      stakingToken.totalLiquidity = ZERO_BI.toBigDecimal();
-      stakingToken.derivedKLC = ZERO_BI.toBigDecimal();
-      stakingToken.createdAt = block.timestamp;
-      stakingToken.updatedAt = block.timestamp;
+      stakingToken.totalLiquidity = ZERO_BD;
+      stakingToken.derivedKLC = ZERO_BD;
       stakingToken.save();
     }
     pool.stakingToken = stakingToken.id;
@@ -113,8 +96,7 @@ function getOrCreateStakingPool(address: Address, block: ethereum.Block): Stakin
     if (rewardsToken === null) {
       // If token doesn't exist in our system yet, create a placeholder
       rewardsToken = new Token(rewardsTokenAddress.toHexString());
-      rewardsToken.factory = factory.id; // Set the factory field
-      rewardsToken.address = rewardsTokenAddress;
+      // Remove factory and address fields as they don't exist in new schema
 
       // Try to get token details
       let tokenContract = ERC20.bind(rewardsTokenAddress);
@@ -134,26 +116,24 @@ function getOrCreateStakingPool(address: Address, block: ethereum.Block): Stakin
 
       let decimalsResult = tokenContract.try_decimals();
       if (!decimalsResult.reverted) {
-        rewardsToken.decimals = decimalsResult.value;
+        rewardsToken.decimals = BigInt.fromI32(decimalsResult.value);
       } else {
-        rewardsToken.decimals = 18;
+        rewardsToken.decimals = BigInt.fromI32(18);
       }
 
       let totalSupplyResult = tokenContract.try_totalSupply();
       if (!totalSupplyResult.reverted) {
         rewardsToken.totalSupply = totalSupplyResult.value;
       } else {
-        rewardsToken.totalSupply = ZERO_BI;
+        rewardsToken.totalSupply = BigInt.fromI32(0);
       }
 
-      rewardsToken.tradeVolume = ZERO_BI.toBigDecimal();
-      rewardsToken.tradeVolumeUSD = ZERO_BI.toBigDecimal();
-      rewardsToken.untrackedVolumeUSD = ZERO_BI.toBigDecimal();
+      rewardsToken.tradeVolume = ZERO_BD;
+      rewardsToken.tradeVolumeUSD = ZERO_BD;
+      rewardsToken.untrackedVolumeUSD = ZERO_BD;
       rewardsToken.txCount = ZERO_BI;
-      rewardsToken.totalLiquidity = ZERO_BI.toBigDecimal();
-      rewardsToken.derivedKLC = ZERO_BI.toBigDecimal();
-      rewardsToken.createdAt = block.timestamp;
-      rewardsToken.updatedAt = block.timestamp;
+      rewardsToken.totalLiquidity = ZERO_BD;
+      rewardsToken.derivedKLC = ZERO_BD;
       rewardsToken.save();
     }
     pool.rewardsToken = rewardsToken.id;

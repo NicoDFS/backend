@@ -6,7 +6,7 @@ export const dexResolvers = {
       return dexService.getDexOverview();
     },
 
-    factory: async (_: any, __: any, { dexService }: Context) => {
+    kalyswapFactory: async (_: any, __: any, { dexService }: Context) => {
       return dexService.getFactory();
     },
 
@@ -44,6 +44,14 @@ export const dexResolvers = {
 
     treasuryVester: async (_: any, __: any, { dexService }: Context) => {
       return dexService.getTreasuryVester();
+    },
+
+    tokensVestedEvents: async (
+      _: any,
+      { first, skip }: { first?: number; skip?: number },
+      { dexService }: Context
+    ) => {
+      return dexService.getTokensVestedEvents(first, skip);
     },
 
     dexStakingPool: async (_: any, __: any, { dexService }: Context) => {
