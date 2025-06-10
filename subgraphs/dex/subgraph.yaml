@@ -151,45 +151,7 @@ dataSources:
           handler: handleRecipientChanged
       file: ./src/treasury-vester.ts
 
-  - kind: ethereum
-    name: KalyswapRouter
-    network: kalychain
-    source:
-      address: "0x183F288BF7EEBe1A3f318F4681dF4a70ef32B2f3"  # KalySwap Router contract address
-      abi: KalyswapRouter
-      startBlock: 6880688  # Same as Factory deployment block
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - Router
-        - RouterSwap
-        - Pair
-        - Token
-      abis:
-        - name: KalyswapRouter
-          file: ../../src/blockchain/abis/dex/routerABI.json
-        - name: Pair
-          file: ../../src/blockchain/abis/dex/pairABI.json
-        - name: Factory
-          file: ../../src/blockchain/abis/dex/factoryABI.json
-        - name: ERC20
-          file: ../../src/blockchain/abis/dex/erc20ABI.json
-      callHandlers:
-        - function: swapExactTokensForTokens(uint256,uint256,address[],address,uint256)
-          handler: handleSwapExactTokensForTokens
-        - function: swapTokensForExactTokens(uint256,uint256,address[],address,uint256)
-          handler: handleSwapTokensForExactTokens
-        - function: swapExactTokensForKLC(uint256,uint256,address[],address,uint256)
-          handler: handleSwapExactTokensForKLC
-        - function: swapTokensForExactKLC(uint256,uint256,address[],address,uint256)
-          handler: handleSwapTokensForExactKLC
-        - function: swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256)
-          handler: handleSwapExactTokensForTokensSupportingFeeOnTransferTokens
-        - function: swapExactTokensForKLCSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256)
-          handler: handleSwapExactTokensForKLCSupportingFeeOnTransferTokens
-      file: ./src/router.ts
+
 
 templates:
   - kind: ethereum

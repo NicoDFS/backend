@@ -7,6 +7,8 @@ import { stakingResolvers } from './resolvers/staking';
 import { monitoringResolvers } from './resolvers/monitoring';
 import { userResolvers } from './resolvers/user';
 import { apiKeyResolvers } from './resolvers/apiKey';
+import { projectResolvers } from './resolvers/project';
+import { fairlaunchResolvers } from './resolvers/fairlaunch';
 
 const typeDefs = gql`
   type Token {
@@ -394,7 +396,72 @@ const typeDefs = gql`
     address: String!
   }
 
+  # Project types for confirmed blockchain projects
+  type Project {
+    id: ID!
+    name: String!
+    description: String!
+    websiteUrl: String
+    whitepaperUrl: String
+    githubUrl: String
+    discordUrl: String
+    telegramUrl: String
+    twitterUrl: String
+    additionalSocialUrl: String
 
+    saleToken: String!
+    baseToken: String!
+    tokenRate: String!
+    liquidityRate: String!
+    minContribution: String
+    maxContribution: String
+    softCap: String!
+    hardCap: String!
+    liquidityPercent: String!
+    presaleStart: String!
+    presaleEnd: String!
+    lpLockDuration: String!
+    lpRecipient: String
+
+    contractAddress: String!
+    transactionHash: String!
+    blockNumber: Int!
+    deployedAt: String!
+    createdAt: String!
+    user: User!
+  }
+
+  # Fairlaunch Project type for confirmed blockchain projects
+  type FairlaunchProject {
+    id: ID!
+    name: String!
+    description: String!
+    websiteUrl: String
+    whitepaperUrl: String
+    githubUrl: String
+    discordUrl: String
+    telegramUrl: String
+    twitterUrl: String
+    additionalSocialUrl: String
+
+    saleToken: String!
+    baseToken: String!
+    buybackRate: String!
+    sellingAmount: String!
+    softCap: String!
+    liquidityPercent: String!
+    fairlaunchStart: String!
+    fairlaunchEnd: String!
+    isWhitelist: Boolean!
+    referrer: String
+
+    contractAddress: String!
+    transactionHash: String!
+    blockNumber: Int!
+    deployedAt: String!
+    createdAt: String!
+    user: User!
+  }
 
   type StakingUser {
     id: ID!
@@ -546,6 +613,95 @@ const typeDefs = gql`
     ADMIN
   }
 
+  # Input type for sending transactions
+  input SendTransactionInput {
+    walletId: ID!
+    toAddress: String!
+    amount: String!
+    asset: String!
+    password: String!
+    chainId: Int!
+    gasLimit: String
+    gasPrice: String
+  }
+
+  # Response type for transaction operations
+  type TransactionResponse {
+    id: ID!
+    hash: String!
+    status: String!
+    gasUsed: String
+    gasPrice: String
+    fee: String
+    blockNumber: Int
+    timestamp: String
+  }
+
+  # Input type for saving confirmed projects
+  input ProjectDeploymentInput {
+    # Project Information
+    name: String!
+    description: String!
+    websiteUrl: String
+    whitepaperUrl: String
+    githubUrl: String
+    discordUrl: String
+    telegramUrl: String
+    twitterUrl: String
+    additionalSocialUrl: String
+
+    # Presale Configuration
+    saleToken: String!
+    baseToken: String!
+    tokenRate: String!
+    liquidityRate: String!
+    minContribution: String
+    maxContribution: String
+    softCap: String!
+    hardCap: String!
+    liquidityPercent: String!
+    presaleStart: String!
+    presaleEnd: String!
+    lpLockDuration: String!
+    lpRecipient: String
+
+    # Required Blockchain Data
+    contractAddress: String!
+    transactionHash: String!
+    blockNumber: Int!
+  }
+
+  # Input type for saving confirmed fairlaunch projects
+  input FairlaunchDeploymentInput {
+    # Project Information
+    name: String!
+    description: String!
+    websiteUrl: String
+    whitepaperUrl: String
+    githubUrl: String
+    discordUrl: String
+    telegramUrl: String
+    twitterUrl: String
+    additionalSocialUrl: String
+
+    # Fairlaunch Configuration
+    saleToken: String!
+    baseToken: String!
+    buybackRate: String!
+    sellingAmount: String!
+    softCap: String!
+    liquidityPercent: String!
+    fairlaunchStart: String!
+    fairlaunchEnd: String!
+    isWhitelist: Boolean!
+    referrer: String
+
+    # Required Blockchain Data
+    contractAddress: String!
+    transactionHash: String!
+    blockNumber: Int!
+  }
+
   type Query {
     # DEX queries
     dexOverview: DexOverview
@@ -576,6 +732,16 @@ const typeDefs = gql`
     launchpadProjects: [LaunchpadProject!]!
     launchpadProject(id: ID!): LaunchpadProject
     launchpadOverview: LaunchpadOverview
+
+    # Project queries (confirmed blockchain projects only)
+    confirmedProjects(limit: Int, offset: Int): [Project!]!
+    confirmedProject(id: ID!): Project
+    myConfirmedProjects(limit: Int, offset: Int): [Project!]!
+
+    # Fairlaunch queries (confirmed blockchain projects only)
+    confirmedFairlaunches(limit: Int, offset: Int): [FairlaunchProject!]!
+    confirmedFairlaunch(id: ID!): FairlaunchProject
+    myConfirmedFairlaunches(limit: Int, offset: Int): [FairlaunchProject!]!
 
     # Staking queries
     stakingPools: [StakingPool!]!
@@ -627,6 +793,7 @@ const typeDefs = gql`
     importWallet(privateKey: String!, password: String!): Wallet!
 
     # Transaction mutations
+    sendTransaction(input: SendTransactionInput!): TransactionResponse!
     trackSendTransaction(
       walletId: ID!,
       hash: String!,
@@ -653,6 +820,12 @@ const typeDefs = gql`
 
     revokeApiKey(id: ID!): ApiKey!
     deleteApiKey(id: ID!): Boolean!
+
+    # Project mutations (blockchain-first only)
+    saveProjectAfterDeployment(input: ProjectDeploymentInput!): Project!
+
+    # Fairlaunch mutations (blockchain-first only)
+    saveFairlaunchAfterDeployment(input: FairlaunchDeploymentInput!): FairlaunchProject!
   }
 `;
 
@@ -666,5 +839,7 @@ export const schema = makeExecutableSchema({
     monitoringResolvers,
     userResolvers,
     apiKeyResolvers,
+    projectResolvers,
+    fairlaunchResolvers,
   ],
 });

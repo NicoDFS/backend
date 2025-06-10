@@ -21,6 +21,8 @@ model User {
   wallets       Wallet[]
   transactions  Transaction[]
   apiKeys       ApiKey[]
+  projects      Project[]
+  fairlaunches  FairlaunchProject[]
 }
 
 model Wallet {
@@ -97,4 +99,95 @@ enum ApiKeyPermission {
   READ_USER      // Can read user-specific data (requires user context)
   WRITE_USER     // Can perform user operations (wallet creation, transactions)
   ADMIN          // Full admin access
+}
+
+model Project {
+  id                    String    @id @default(uuid())
+
+  // Project Information (from form)
+  name                  String
+  description           String    @db.Text
+  websiteUrl            String?
+  whitepaperUrl         String?
+  githubUrl             String?
+  discordUrl            String?
+  telegramUrl           String?
+  twitterUrl            String?
+  additionalSocialUrl   String?
+
+  // Presale Configuration (from form)
+  saleToken             String
+  baseToken             String
+  tokenRate             String
+  liquidityRate         String
+  minContribution       String?
+  maxContribution       String?
+  softCap               String
+  hardCap               String
+  liquidityPercent      String
+  presaleStart          DateTime
+  presaleEnd            DateTime
+  lpLockDuration        String
+  lpRecipient           String?
+
+  // Blockchain Data (required for save)
+  contractAddress       String    @unique  // Deployed presale contract address
+  transactionHash       String    @unique  // Creation transaction hash
+  blockNumber           Int                // Block where contract was deployed
+  deployedAt            DateTime           // When contract was successfully deployed
+
+  // Metadata
+  createdAt             DateTime  @default(now())
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id])
+  userId                String
+
+  @@index([userId])
+  @@index([contractAddress])
+  @@index([transactionHash])
+}
+
+model FairlaunchProject {
+  id                    String    @id @default(uuid())
+
+  // Project Information (from form)
+  name                  String
+  description           String    @db.Text
+  websiteUrl            String?
+  whitepaperUrl         String?
+  githubUrl             String?
+  discordUrl            String?
+  telegramUrl           String?
+  twitterUrl            String?
+  additionalSocialUrl   String?
+
+  // Fairlaunch Configuration (from form)
+  saleToken             String
+  baseToken             String
+  buybackRate           String
+  sellingAmount         String
+  softCap               String
+  liquidityPercent      String
+  fairlaunchStart       DateTime
+  fairlaunchEnd         DateTime
+  isWhitelist           Boolean   @default(false)
+  referrer              String?
+
+  // Blockchain Data (required for save)
+  contractAddress       String    @unique  // Deployed fairlaunch contract address
+  transactionHash       String    @unique  // Creation transaction hash
+  blockNumber           Int                // Block where contract was deployed
+  deployedAt            DateTime           // When contract was successfully deployed
+
+  // Metadata
+  createdAt             DateTime  @default(now())
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id])
+  userId                String
+
+  @@index([userId])
+  @@index([contractAddress])
+  @@index([transactionHash])
 }

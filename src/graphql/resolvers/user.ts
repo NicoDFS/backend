@@ -1,6 +1,7 @@
 import { userService } from '../../services/user/userService';
 import { walletService } from '../../services/user/walletService';
 import { transactionService } from '../../services/user/transactionService';
+import { transactionSenderService } from '../../services/user/transactionSender';
 import { ethers } from 'ethers';
 import KalyWalletGenerator from '../../services/user/walletGenerator';
 import { TransactionStatus, TransactionType } from '@prisma/client';
@@ -426,6 +427,22 @@ export const userResolvers = {
         };
       } catch (error) {
         throw new Error(`Failed to update transaction: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    },
+
+    // Send a transaction (native KLC or ERC20 token)
+    sendTransaction: async (_: any, { input }: { input: any }, context: Context) => {
+      try {
+        // Authenticate user
+        const user = await authenticate(context);
+        checkPermission(context, ApiKeyPermissions.WRITE_USER);
+
+        // Send transaction using the transaction sender service
+        const result = await transactionSenderService.sendTransaction(input, user.id);
+
+        return result;
+      } catch (error) {
+        throw new Error(`Failed to send transaction: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   },

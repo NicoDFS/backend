@@ -7,6 +7,7 @@ import { HyperlaneApiService } from '../../services/bridge/hyperlane-api';
 import { userService } from '../../services/user/userService';
 import { walletService } from '../../services/user/walletService';
 import { apiKeyService, ApiKey, ApiKeyPermissions } from '../../services/auth/apiKeyService';
+import { ProjectService } from '../../services/project';
 
 export type Context = {
   dexService: typeof DexService;
@@ -18,6 +19,7 @@ export type Context = {
   userService: typeof userService;
   walletService: typeof walletService;
   apiKeyService: typeof apiKeyService;
+  projectService: typeof ProjectService;
   req?: any;
   // Authentication context
   user?: any;
@@ -36,6 +38,7 @@ export async function createContext({ req }: { req?: any } = {}): Promise<Contex
     userService,
     walletService,
     apiKeyService,
+    projectService: ProjectService,
     req,
   };
 
