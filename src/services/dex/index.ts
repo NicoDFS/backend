@@ -1576,6 +1576,67 @@ export const DexService = {
     }
   },
 
+  // Get swap transactions from subgraph
+  async getSwaps(first: number = 10, skip: number = 0, userAddress?: string) {
+    if (USE_MOCK_DATA) {
+      return [];
+    }
+
+    const baseQuery = `
+      swaps(
+        first: $first
+        skip: $skip
+        orderBy: timestamp
+        orderDirection: desc
+        ${userAddress ? `where: { or: [{ sender: "${userAddress.toLowerCase()}" }, { to: "${userAddress.toLowerCase()}" }] }` : ''}
+      ) {
+        id
+        transaction {
+          id
+          timestamp
+        }
+        timestamp
+        pair {
+          id
+          token0 {
+            id
+            symbol
+            name
+            decimals
+          }
+          token1 {
+            id
+            symbol
+            name
+            decimals
+          }
+        }
+        sender
+        to
+        amount0In
+        amount1In
+        amount0Out
+        amount1Out
+        amountUSD
+      }
+    `;
+
+    const query = gql`
+      query GetSwaps($first: Int!, $skip: Int!) {
+        ${baseQuery}
+      }
+    `;
+
+    try {
+      const result = await dexClient.request(query, { first, skip });
+      console.log(`Fetched ${result.swaps?.length || 0} swaps from subgraph`);
+      return result.swaps || [];
+    } catch (error) {
+      console.error('Error fetching swaps from subgraph:', error);
+      return [];
+    }
+  },
+
   // Get DEX overview data for dashboard
   async getDexOverview() {
     try {

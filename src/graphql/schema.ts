@@ -720,6 +720,7 @@ const typeDefs = gql`
     router: Router
     routerSwaps(first: Int, skip: Int): [RouterSwap!]!
     lpStakingData: LPStakingData!
+    swaps(first: Int, skip: Int, userAddress: String): [Swap!]!
 
     # Bridge queries
     bridges(limit: Int, skip: Int): [Bridge!]!
@@ -798,6 +799,18 @@ const typeDefs = gql`
       walletId: ID!,
       hash: String!,
       toAddress: String!,
+      amount: String!,
+      tokenAddress: String,
+      tokenSymbol: String,
+      tokenDecimals: Int,
+      fee: String
+    ): Transaction!
+
+    trackSwapTransaction(
+      walletId: ID!,
+      hash: String!,
+      fromAddress: String!,
+      toAddress: String,
       amount: String!,
       tokenAddress: String,
       tokenSymbol: String,

@@ -385,6 +385,75 @@ export const userResolvers = {
       }
     },
 
+    // Track a swap transaction
+    trackSwapTransaction: async (_: any, {
+      walletId,
+      hash,
+      fromAddress,
+      toAddress,
+      amount,
+      tokenAddress,
+      tokenSymbol,
+      tokenDecimals,
+      fee
+    }: {
+      walletId: string,
+      hash: string,
+      fromAddress: string,
+      toAddress?: string,
+      amount: string,
+      tokenAddress?: string,
+      tokenSymbol?: string,
+      tokenDecimals?: number,
+      fee?: string
+    }, context: any) => {
+      try {
+        // Authenticate user
+        const user = await authenticate(context);
+
+        // Get user wallets
+        const userWallets = await walletService.getWalletsByUserId(user.id);
+
+        // Check if wallet belongs to user
+        const wallet = userWallets.find(w => w.id === walletId);
+        if (!wallet) {
+          throw new Error('Wallet not found or does not belong to user');
+        }
+
+        // Track swap transaction
+        const transaction = await transactionService.trackSwapTransaction({
+          hash,
+          fromAddress,
+          toAddress,
+          amount,
+          tokenAddress,
+          tokenSymbol,
+          tokenDecimals,
+          fee,
+          userId: user.id,
+          walletId
+        });
+
+        return {
+          id: transaction.id,
+          type: transaction.type,
+          status: transaction.status,
+          hash: transaction.hash,
+          fromAddress: transaction.fromAddress,
+          toAddress: transaction.toAddress,
+          amount: transaction.amount,
+          tokenAddress: transaction.tokenAddress,
+          tokenSymbol: transaction.tokenSymbol,
+          tokenDecimals: transaction.tokenDecimals,
+          fee: transaction.fee,
+          blockNumber: transaction.blockNumber,
+          timestamp: transaction.timestamp.toISOString()
+        };
+      } catch (error) {
+        throw new Error(`Failed to track swap transaction: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    },
+
     // Update transaction status
     updateTransactionStatus: async (_: any, {
       hash,

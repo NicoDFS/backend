@@ -146,6 +146,46 @@ export class TransactionService {
   }
 
   /**
+   * Track a new swap transaction
+   * @param data Swap transaction data
+   * @returns Created transaction
+   */
+  async trackSwapTransaction(data: {
+    hash: string;
+    fromAddress: string;
+    toAddress?: string;
+    amount: string;
+    tokenAddress?: string;
+    tokenSymbol?: string;
+    tokenDecimals?: number;
+    fee?: string;
+    userId: string;
+    walletId: string;
+    // Additional swap-specific data
+    fromTokenSymbol?: string;
+    toTokenSymbol?: string;
+    fromAmount?: string;
+    toAmount?: string;
+    slippage?: string;
+    priceImpact?: string;
+  }) {
+    return this.createTransaction({
+      hash: data.hash,
+      fromAddress: data.fromAddress,
+      toAddress: data.toAddress,
+      amount: data.amount,
+      tokenAddress: data.tokenAddress,
+      tokenSymbol: data.tokenSymbol,
+      tokenDecimals: data.tokenDecimals,
+      fee: data.fee,
+      userId: data.userId,
+      walletId: data.walletId,
+      type: TransactionType.SWAP,
+      status: TransactionStatus.PENDING
+    });
+  }
+
+  /**
    * Track a new receive transaction
    * @param data Transaction data
    * @returns Created transaction

@@ -88,6 +88,14 @@ export const dexResolvers = {
 
     lpStakingData: async (_: any, __: any, { dexService }: Context) => {
       return dexService.getLPStakingData();
+    },
+
+    swaps: async (
+      _: any,
+      { first, skip, userAddress }: { first?: number; skip?: number; userAddress?: string },
+      { dexService }: Context
+    ) => {
+      return dexService.getSwaps(first, skip, userAddress);
     }
   }
 };

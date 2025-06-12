@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for user data and wallet storage
+  postgres:
+    image: postgres:16-alpine
+    container_name: kalyswap-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kalyswap
+      POSTGRES_PASSWORD: kalyswap_password
+      POSTGRES_DB: kalyswap_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kalyswap_network
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: kalyswap-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - kalyswap_network
+
+  # Adminer for database management (optional, for development)
+  adminer:
+    image: adminer
+    container_name: kalyswap-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    networks:
+      - kalyswap_network
+    depends_on:
+      - postgres
+
+networks:
+  kalyswap_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
