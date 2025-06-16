@@ -26,6 +26,17 @@ export interface SendTransactionInput {
   gasPrice?: string;
 }
 
+export interface SendContractTransactionInput {
+  walletId: string;
+  toAddress: string;
+  value: string;
+  data: string;
+  password: string;
+  chainId: number;
+  gasLimit?: string;
+  gasPrice?: string;
+}
+
 // Asset to contract address mapping for KalyChain
 const ASSET_ADDRESSES: { [key: string]: string | null } = {
   'KLC': null, // Native token
@@ -160,6 +171,92 @@ export class TransactionSenderService {
 
     } catch (error) {
       throw new Error(`Transaction failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Send a contract transaction (arbitrary contract call)
+   * @param input Contract transaction input parameters
+   * @param userId User ID for authentication
+   * @returns Transaction response
+   */
+  async sendContractTransaction(input: SendContractTransactionInput, userId: string): Promise<TransactionResponse> {
+    try {
+      // Get and validate wallet
+      const wallet = await this.getAndValidateWallet(input.walletId, userId, input.password);
+
+      // Create ethers wallet instance
+      const ethersWallet = new ethers.Wallet(wallet.privateKey, this.provider);
+
+      // Prepare contract transaction
+      const transaction: ethers.providers.TransactionRequest = {
+        to: input.toAddress,
+        value: input.value ? ethers.BigNumber.from(input.value) : ethers.BigNumber.from(0),
+        data: input.data,
+        from: wallet.address
+      };
+
+      // Apply gas settings if provided
+      if (input.gasLimit) {
+        transaction.gasLimit = ethers.BigNumber.from(input.gasLimit);
+      } else {
+        // Estimate gas for contract call
+        try {
+          const estimatedGas = await this.provider.estimateGas(transaction);
+          transaction.gasLimit = estimatedGas.mul(120).div(100); // Add 20% buffer
+        } catch (gasError) {
+          console.warn('Gas estimation failed, using default:', gasError);
+          transaction.gasLimit = ethers.BigNumber.from(500000); // Default gas limit for contract calls
+        }
+      }
+
+      if (input.gasPrice) {
+        transaction.gasPrice = ethers.BigNumber.from(input.gasPrice);
+      } else {
+        // Get current gas price
+        const gasPrice = await this.provider.getGasPrice();
+        transaction.gasPrice = gasPrice;
+      }
+
+      // Calculate estimated fee
+      const fee = transaction.gasLimit!.mul(transaction.gasPrice!);
+
+      console.log('📝 Sending contract transaction:', {
+        to: transaction.to,
+        value: transaction.value?.toString(),
+        data: transaction.data?.slice(0, 10) + '...',
+        gasLimit: transaction.gasLimit?.toString(),
+        gasPrice: transaction.gasPrice?.toString(),
+        estimatedFee: ethers.utils.formatEther(fee) + ' KLC'
+      });
+
+      // Send transaction
+      const txResponse = await ethersWallet.sendTransaction(transaction);
+
+      // Create transaction record in database
+      const dbTransaction = await transactionService.trackContractTransaction({
+        hash: txResponse.hash,
+        fromAddress: wallet.address,
+        toAddress: input.toAddress,
+        value: input.value,
+        data: input.data,
+        fee: fee.toString(),
+        userId,
+        walletId: input.walletId
+      });
+
+      // Return response
+      return {
+        id: dbTransaction.id,
+        hash: txResponse.hash,
+        status: 'PENDING',
+        gasPrice: transaction.gasPrice!.toString(),
+        fee: fee.toString(),
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      throw new Error(`Contract transaction failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

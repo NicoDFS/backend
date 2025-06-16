@@ -210,6 +210,35 @@ export class TransactionService {
   }
 
   /**
+   * Track a new contract transaction
+   * @param data Contract transaction data
+   * @returns Created transaction
+   */
+  async trackContractTransaction(data: {
+    hash: string;
+    fromAddress: string;
+    toAddress: string;
+    value: string;
+    data: string;
+    fee?: string;
+    userId: string;
+    walletId: string;
+  }) {
+    return this.createTransaction({
+      hash: data.hash,
+      fromAddress: data.fromAddress,
+      toAddress: data.toAddress,
+      amount: data.value,
+      tokenSymbol: 'CONTRACT_CALL',
+      fee: data.fee,
+      userId: data.userId,
+      walletId: data.walletId,
+      type: TransactionType.SEND, // Use SEND type for contract calls
+      status: TransactionStatus.PENDING
+    });
+  }
+
+  /**
    * Confirm a pending transaction
    * @param hash Transaction hash
    * @param blockNumber Block number

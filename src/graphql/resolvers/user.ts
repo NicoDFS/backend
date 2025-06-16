@@ -513,6 +513,22 @@ export const userResolvers = {
       } catch (error) {
         throw new Error(`Failed to send transaction: ${error instanceof Error ? error.message : String(error)}`);
       }
+    },
+
+    // Send a contract transaction
+    sendContractTransaction: async (_: any, { input }: { input: any }, context: Context) => {
+      try {
+        // Authenticate user
+        const user = await authenticate(context);
+        checkPermission(context, ApiKeyPermissions.WRITE_USER);
+
+        // Send contract transaction
+        const result = await transactionSenderService.sendContractTransaction(input, user.id);
+
+        return result;
+      } catch (error) {
+        throw new Error(`Contract transaction failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
   },
 

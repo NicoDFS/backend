@@ -625,6 +625,17 @@ const typeDefs = gql`
     gasPrice: String
   }
 
+  input SendContractTransactionInput {
+    walletId: ID!
+    toAddress: String!
+    value: String!
+    data: String!
+    password: String!
+    chainId: Int!
+    gasLimit: String
+    gasPrice: String
+  }
+
   # Response type for transaction operations
   type TransactionResponse {
     id: ID!
@@ -795,6 +806,7 @@ const typeDefs = gql`
 
     # Transaction mutations
     sendTransaction(input: SendTransactionInput!): TransactionResponse!
+    sendContractTransaction(input: SendContractTransactionInput!): TransactionResponse!
     trackSendTransaction(
       walletId: ID!,
       hash: String!,

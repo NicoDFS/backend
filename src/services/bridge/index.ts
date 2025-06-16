@@ -834,23 +834,48 @@ export const BridgeService = {
     }
   },
 
-  // This method would use contract addresses and warp routes from the contracts/bridge folder
+  // Get warp routes from the actual configuration
   async getWarpRoutes() {
-    // In a real implementation, this would read from the contract addresses and warp routes
-    // For now, we'll return a placeholder
+    // Return actual warp routes based on the frontend configuration
     return [
       {
-        id: '1',
+        id: 'klc-routes',
         sourceChain: 'kalychain',
-        destinationChain: 'ethereum',
-        tokenAddress: '0x1234567890abcdef1234567890abcdef12345678',
+        destinationChain: 'arbitrum',
+        tokenAddress: '0x8A1ABbB167b149F2493C8141091028fD812Da6E4',
+        tokenSymbol: 'KLC',
         status: 'active'
       },
       {
-        id: '2',
+        id: 'klc-bsc',
         sourceChain: 'kalychain',
         destinationChain: 'bsc',
-        tokenAddress: '0xabcdef1234567890abcdef1234567890abcdef12',
+        tokenAddress: '0x8A1ABbB167b149F2493C8141091028fD812Da6E4',
+        tokenSymbol: 'KLC',
+        status: 'active'
+      },
+      {
+        id: 'klc-polygon',
+        sourceChain: 'kalychain',
+        destinationChain: 'polygon',
+        tokenAddress: '0x8A1ABbB167b149F2493C8141091028fD812Da6E4',
+        tokenSymbol: 'KLC',
+        status: 'active'
+      },
+      {
+        id: 'usdt-arbitrum',
+        sourceChain: 'kalychain',
+        destinationChain: 'arbitrum',
+        tokenAddress: '0x2CA775C77B922A51FcF3097F52bFFdbc0250D99A',
+        tokenSymbol: 'USDT',
+        status: 'active'
+      },
+      {
+        id: 'usdt-polygon',
+        sourceChain: 'kalychain',
+        destinationChain: 'polygon',
+        tokenAddress: '0x2CA775C77B922A51FcF3097F52bFFdbc0250D99A',
+        tokenSymbol: 'USDT',
         status: 'active'
       }
     ];
