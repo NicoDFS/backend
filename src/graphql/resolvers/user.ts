@@ -573,25 +573,10 @@ export const userResolvers = {
       return await walletService.getWalletBalance(parent.address);
     },
 
-    // Resolve transactions for a wallet
-    transactions: async (parent: { id: string }, { limit, offset }: { limit?: number, offset?: number }) => {
-      const transactions = await transactionService.getTransactionsByWalletId(parent.id, limit, offset);
-
-      return transactions.map(tx => ({
-        id: tx.id,
-        type: tx.type,
-        status: tx.status,
-        hash: tx.hash,
-        fromAddress: tx.fromAddress,
-        toAddress: tx.toAddress,
-        amount: tx.amount,
-        tokenAddress: tx.tokenAddress,
-        tokenSymbol: tx.tokenSymbol,
-        tokenDecimals: tx.tokenDecimals,
-        fee: tx.fee,
-        blockNumber: tx.blockNumber,
-        timestamp: tx.timestamp.toISOString()
-      }));
+    // Resolve transactions for a wallet using KalyScan API
+    transactions: async (parent: { address: string }, { limit }: { limit?: number }) => {
+      const transactions = await walletService.getWalletTransactions(parent.address, limit || 10);
+      return transactions;
     }
   }
 };

@@ -127,33 +127,8 @@ export class WalletService implements IWalletService {
       const klcBalance = await this.provider.getBalance(address);
       const klcBalanceFormatted = ethers.utils.formatEther(klcBalance);
 
-      // Get token balances
-      const tokens = await Promise.all(
-        Object.entries(TOKEN_ADDRESSES).map(async ([symbol, tokenAddress]) => {
-          try {
-            const tokenContract = new ethers.Contract(
-              tokenAddress,
-              ERC20_ABI,
-              this.provider
-            );
-
-            const balance = await tokenContract.balanceOf(address);
-            const decimals = await tokenContract.decimals();
-            const formattedBalance = ethers.utils.formatUnits(balance, decimals);
-
-            return {
-              symbol,
-              balance: formattedBalance
-            };
-          } catch (error) {
-            console.error(`Error fetching ${symbol} balance:`, error);
-            return {
-              symbol,
-              balance: '0'
-            };
-          }
-        })
-      );
+      // Get token balances from KalyScan API
+      const tokens = await this.getTokenBalancesFromAPI(address);
 
       return {
         klc: klcBalanceFormatted,
@@ -162,6 +137,216 @@ export class WalletService implements IWalletService {
     } catch (error) {
       console.error('Error fetching wallet balance:', error);
       throw new Error('Failed to fetch wallet balance');
+    }
+  }
+
+  /**
+   * Get token balances from KalyScan API
+   * @param address Wallet address
+   * @returns Array of token balances
+   */
+  private async getTokenBalancesFromAPI(address: string): Promise<{ symbol: string; balance: string; }[]> {
+    try {
+      const response = await fetch(
+        `https://kalyscan.io/api/v2/addresses/${address}/tokens?type=ERC-20%2CERC-721%2CERC-1155`
+      );
+
+      if (!response.ok) {
+        console.warn('KalyScan API request failed, falling back to hardcoded tokens');
+        return this.getTokenBalancesFromHardcodedList(address);
+      }
+
+      const data = await response.json();
+
+      if (!data.items || !Array.isArray(data.items)) {
+        console.warn('Invalid API response format, falling back to hardcoded tokens');
+        return this.getTokenBalancesFromHardcodedList(address);
+      }
+
+      // Process tokens from API
+      const tokens = data.items
+        .filter((item: any) => item.token && item.token.type === 'ERC-20') // Only ERC-20 tokens
+        .map((item: any) => {
+          const token = item.token;
+          const balance = item.value;
+          const decimals = parseInt(token.decimals) || 18;
+
+          // Format balance using ethers
+          const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+
+          return {
+            symbol: token.symbol || 'UNKNOWN',
+            balance: formattedBalance
+          };
+        });
+
+      return tokens;
+    } catch (error) {
+      console.error('Error fetching tokens from KalyScan API:', error);
+      // Fallback to hardcoded token list
+      return this.getTokenBalancesFromHardcodedList(address);
+    }
+  }
+
+  /**
+   * Fallback method to get token balances from hardcoded list
+   * @param address Wallet address
+   * @returns Array of token balances
+   */
+  private async getTokenBalancesFromHardcodedList(address: string): Promise<{ symbol: string; balance: string; }[]> {
+    const tokens = await Promise.all(
+      Object.entries(TOKEN_ADDRESSES).map(async ([symbol, tokenAddress]) => {
+        try {
+          const tokenContract = new ethers.Contract(
+            tokenAddress,
+            ERC20_ABI,
+            this.provider
+          );
+
+          const balance = await tokenContract.balanceOf(address);
+          const decimals = await tokenContract.decimals();
+          const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+
+          return {
+            symbol,
+            balance: formattedBalance
+          };
+        } catch (error) {
+          console.error(`Error fetching ${symbol} balance:`, error);
+          return {
+            symbol,
+            balance: '0'
+          };
+        }
+      })
+    );
+
+    return tokens;
+  }
+
+  /**
+   * Get wallet transactions from KalyScan API
+   * @param address Wallet address
+   * @param limit Maximum number of transactions to return
+   * @returns Array of transactions
+   */
+  async getWalletTransactions(address: string, limit = 10): Promise<{
+    id: string;
+    type: string;
+    status: string;
+    hash: string;
+    fromAddress: string;
+    toAddress: string;
+    amount: string;
+    tokenAddress?: string;
+    tokenSymbol?: string;
+    tokenDecimals?: number;
+    fee: string;
+    blockNumber: number;
+    timestamp: string;
+  }[]> {
+    try {
+      const response = await fetch(
+        `https://kalyscan.io/api/v2/addresses/${address}/transactions?filter=to%20%7C%20from`
+      );
+
+      if (!response.ok) {
+        console.warn('KalyScan API request failed for transactions');
+        return [];
+      }
+
+      const data = await response.json();
+
+      if (!data.items || !Array.isArray(data.items)) {
+        console.warn('Invalid transaction API response format');
+        return [];
+      }
+
+      // Process transactions from API
+      const transactions = data.items.slice(0, limit).map((item: any, index: number) => {
+        // Determine transaction type based on method and transaction_types
+        // Only use valid enum values: SEND, RECEIVE, SWAP, STAKE, UNSTAKE, CLAIM_REWARD, PROVIDE_LIQUIDITY, REMOVE_LIQUIDITY
+        let type = 'SEND'; // Default to SEND for most transactions
+
+        if (item.method) {
+          switch (item.method.toLowerCase()) {
+            case 'stake':
+              type = 'STAKE';
+              break;
+            case 'withdraw':
+            case 'unstake':
+              type = 'UNSTAKE';
+              break;
+            case 'transferremote':
+              type = 'SEND'; // Bridge transfers are essentially sends
+              break;
+            case 'create':
+              type = 'SEND'; // Token creation involves sending KLC
+              break;
+            case 'approve':
+              type = 'SEND'; // Approvals are contract interactions
+              break;
+            case 'deposit':
+              type = 'SWAP'; // Wrapping tokens is like swapping
+              break;
+            case 'addliquidity':
+            case 'addliquidityeth':
+              type = 'PROVIDE_LIQUIDITY';
+              break;
+            case 'removeliquidity':
+            case 'removeliquidityeth':
+              type = 'REMOVE_LIQUIDITY';
+              break;
+            case 'claimreward':
+            case 'getreward':
+              type = 'CLAIM_REWARD';
+              break;
+            default:
+              // Determine based on transaction direction and wallet address
+              if (item.from?.hash?.toLowerCase() === address.toLowerCase()) {
+                type = 'SEND';
+              } else if (item.to?.hash?.toLowerCase() === address.toLowerCase()) {
+                type = 'RECEIVE';
+              } else {
+                type = 'SEND'; // Default fallback
+              }
+          }
+        } else {
+          // For transactions without method (simple transfers)
+          if (item.from?.hash?.toLowerCase() === address.toLowerCase()) {
+            type = 'SEND';
+          } else if (item.to?.hash?.toLowerCase() === address.toLowerCase()) {
+            type = 'RECEIVE';
+          }
+        }
+
+        // Format amount (convert from wei to ether for display)
+        const amount = item.value ? ethers.utils.formatEther(item.value) : '0';
+
+        // Format fee
+        const fee = item.fee?.value ? ethers.utils.formatEther(item.fee.value) : '0';
+
+        return {
+          id: item.hash || `tx-${index}`,
+          type,
+          status: item.status === 'ok' ? 'CONFIRMED' : 'FAILED',
+          hash: item.hash,
+          fromAddress: item.from?.hash || '',
+          toAddress: item.to?.hash || '',
+          amount,
+          tokenAddress: undefined, // Would need token transfer data for this
+          tokenSymbol: undefined,
+          tokenDecimals: undefined,
+          fee,
+          blockNumber: item.block_number || 0,
+          timestamp: item.timestamp || new Date().toISOString()
+        };
+      });
+
+      return transactions;
+    } catch (error) {
+      console.error('Error fetching transactions from KalyScan API:', error);
+      return [];
     }
   }
 
