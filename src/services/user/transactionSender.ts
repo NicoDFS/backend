@@ -19,7 +19,7 @@ export interface SendTransactionInput {
   walletId: string;
   toAddress: string;
   amount: string;
-  asset: string;
+  asset: string; // For native KLC use 'KLC', for ERC20 tokens use contract address
   password: string;
   chainId: number;
   gasLimit?: string;
@@ -37,11 +37,9 @@ export interface SendContractTransactionInput {
   gasPrice?: string;
 }
 
-// Asset to contract address mapping for KalyChain
-const ASSET_ADDRESSES: { [key: string]: string | null } = {
-  'KLC': null, // Native token
-  'USDT': '0x2CA775C77B922A51FcF3097F52bFFdbc0250D99A',
-  // Add more tokens as needed
+// Helper function to check if an address is a valid Ethereum address
+const isValidAddress = (address: string): boolean => {
+  return /^0x[a-fA-F0-9]{40}$/.test(address);
 };
 
 export interface TransactionResponse {
@@ -76,19 +74,20 @@ export class TransactionSenderService {
       // Create ethers wallet instance
       const ethersWallet = new ethers.Wallet(wallet.privateKey, this.provider);
 
-      // Map asset symbol to contract address
-      const tokenAddress = ASSET_ADDRESSES[input.asset.toUpperCase()];
-      if (tokenAddress === undefined) {
-        throw new Error(`Unsupported asset: ${input.asset}`);
-      }
+      // Determine if this is a native token transfer or ERC20 token transfer
+      const isNativeToken = input.asset.toUpperCase() === 'KLC' ||
+                           input.asset === '0x0000000000000000000000000000000000000000' ||
+                           !isValidAddress(input.asset);
 
       // Prepare transaction based on type (native or token)
       let transaction: ethers.providers.TransactionRequest;
       let tokenSymbol = input.asset.toUpperCase();
       let tokenDecimals = 18;
+      let tokenAddress: string | null = null;
 
-      if (tokenAddress) {
-        // ERC20 token transfer
+      if (!isNativeToken) {
+        // ERC20 token transfer - use the asset as contract address
+        tokenAddress = input.asset;
         const tokenResult = await this.prepareTokenTransaction(
           tokenAddress,
           input.toAddress,
@@ -100,6 +99,7 @@ export class TransactionSenderService {
         tokenDecimals = tokenResult.decimals;
       } else {
         // Native KLC transfer
+        tokenAddress = null;
         transaction = await this.prepareNativeTransaction(
           input.toAddress,
           input.amount,

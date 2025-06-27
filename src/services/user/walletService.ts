@@ -120,7 +120,7 @@ export class WalletService implements IWalletService {
    */
   async getWalletBalance(address: string): Promise<{
     klc: string;
-    tokens: { symbol: string; balance: string; }[];
+    tokens: { symbol: string; balance: string; address: string; }[];
   }> {
     try {
       // Get KLC balance
@@ -145,7 +145,7 @@ export class WalletService implements IWalletService {
    * @param address Wallet address
    * @returns Array of token balances
    */
-  private async getTokenBalancesFromAPI(address: string): Promise<{ symbol: string; balance: string; }[]> {
+  private async getTokenBalancesFromAPI(address: string): Promise<{ symbol: string; balance: string; address: string; }[]> {
     try {
       const response = await fetch(
         `https://kalyscan.io/api/v2/addresses/${address}/tokens?type=ERC-20%2CERC-721%2CERC-1155`
@@ -176,7 +176,8 @@ export class WalletService implements IWalletService {
 
           return {
             symbol: token.symbol || 'UNKNOWN',
-            balance: formattedBalance
+            balance: formattedBalance,
+            address: token.address || ''
           };
         });
 
@@ -193,7 +194,7 @@ export class WalletService implements IWalletService {
    * @param address Wallet address
    * @returns Array of token balances
    */
-  private async getTokenBalancesFromHardcodedList(address: string): Promise<{ symbol: string; balance: string; }[]> {
+  private async getTokenBalancesFromHardcodedList(address: string): Promise<{ symbol: string; balance: string; address: string; }[]> {
     const tokens = await Promise.all(
       Object.entries(TOKEN_ADDRESSES).map(async ([symbol, tokenAddress]) => {
         try {
@@ -209,13 +210,15 @@ export class WalletService implements IWalletService {
 
           return {
             symbol,
-            balance: formattedBalance
+            balance: formattedBalance,
+            address: tokenAddress
           };
         } catch (error) {
           console.error(`Error fetching ${symbol} balance:`, error);
           return {
             symbol,
-            balance: '0'
+            balance: '0',
+            address: tokenAddress
           };
         }
       })

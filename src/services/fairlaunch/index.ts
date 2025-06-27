@@ -263,6 +263,56 @@ export const FairlaunchService = {
   },
 
   /**
+   * Get a specific confirmed fairlaunch project by contract address
+   */
+  async getConfirmedFairlaunchByAddress(contractAddress: string): Promise<FairlaunchProject | null> {
+    try {
+      const fairlaunch = await prisma.fairlaunchProject.findUnique({
+        where: { contractAddress },
+        include: {
+          user: true
+        }
+      });
+
+      if (!fairlaunch) {
+        return null;
+      }
+
+      return {
+        id: fairlaunch.id,
+        name: fairlaunch.name,
+        description: fairlaunch.description,
+        websiteUrl: fairlaunch.websiteUrl,
+        whitepaperUrl: fairlaunch.whitepaperUrl,
+        githubUrl: fairlaunch.githubUrl,
+        discordUrl: fairlaunch.discordUrl,
+        telegramUrl: fairlaunch.telegramUrl,
+        twitterUrl: fairlaunch.twitterUrl,
+        additionalSocialUrl: fairlaunch.additionalSocialUrl,
+        saleToken: fairlaunch.saleToken,
+        baseToken: fairlaunch.baseToken,
+        buybackRate: fairlaunch.buybackRate,
+        sellingAmount: fairlaunch.sellingAmount,
+        softCap: fairlaunch.softCap,
+        liquidityPercent: fairlaunch.liquidityPercent,
+        fairlaunchStart: fairlaunch.fairlaunchStart,
+        fairlaunchEnd: fairlaunch.fairlaunchEnd,
+        isWhitelist: fairlaunch.isWhitelist,
+        referrer: fairlaunch.referrer,
+        contractAddress: fairlaunch.contractAddress,
+        transactionHash: fairlaunch.transactionHash,
+        blockNumber: fairlaunch.blockNumber,
+        deployedAt: fairlaunch.deployedAt,
+        createdAt: fairlaunch.createdAt,
+        userId: fairlaunch.userId
+      };
+    } catch (error) {
+      console.error('❌ Error fetching fairlaunch project by address:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Get confirmed fairlaunch projects for a specific user
    */
   async getUserConfirmedFairlaunches(userId: string, limit: number = 10, offset: number = 0): Promise<FairlaunchProject[]> {

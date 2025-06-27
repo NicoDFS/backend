@@ -543,6 +543,7 @@ const typeDefs = gql`
   type TokenBalance {
     symbol: String!
     balance: String!
+    address: String!
   }
 
   type Transaction {
@@ -748,11 +749,16 @@ const typeDefs = gql`
     # Project queries (confirmed blockchain projects only)
     confirmedProjects(limit: Int, offset: Int): [Project!]!
     confirmedProject(id: ID!): Project
+    confirmedProjectByAddress(contractAddress: String!): Project
     myConfirmedProjects(limit: Int, offset: Int): [Project!]!
+
+    # Unified project lookup (searches both presales and fairlaunches)
+    projectByAddress(contractAddress: String!): LaunchpadProject
 
     # Fairlaunch queries (confirmed blockchain projects only)
     confirmedFairlaunches(limit: Int, offset: Int): [FairlaunchProject!]!
     confirmedFairlaunch(id: ID!): FairlaunchProject
+    confirmedFairlaunchByAddress(contractAddress: String!): FairlaunchProject
     myConfirmedFairlaunches(limit: Int, offset: Int): [FairlaunchProject!]!
 
     # Staking queries

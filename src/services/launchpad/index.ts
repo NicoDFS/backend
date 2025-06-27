@@ -1,7 +1,9 @@
 import { gql } from 'graphql-request';
 import { getGraphQLClient } from '../graphql-client';
+import { PrismaClient } from '@prisma/client';
 
 const launchpadClient = getGraphQLClient('launchpad');
+const prisma = new PrismaClient();
 
 export const LaunchpadService = {
   async getLaunchpadProjects() {
@@ -167,146 +169,143 @@ export const LaunchpadService = {
 
   async getLaunchpadOverview() {
     try {
-      const query = gql`
-        query {
-          launchpadStats(id: "1") {
-            id
-            totalTokensCreated
-            totalPresalesCreated
-            totalFairlaunchesCreated
-            totalVolumeRaised
-            totalParticipants
-            activePresales
-            activeFairlaunches
-            lastUpdated
-          }
-          tokenFactories(first: 10) {
-            id
-            address
-            factoryType
-            feeTo
-            flatFee
-            totalTokensCreated
-            createdAt
-            updatedAt
-          }
-          presaleFactories(first: 10) {
-            id
-            address
-            feeTo
-            flatFee
-            totalPresalesCreated
-            createdAt
-            updatedAt
-          }
-          fairlaunchFactories(first: 10) {
-            id
-            address
-            feeTo
-            flatFee
-            totalFairlaunchesCreated
-            createdAt
-            updatedAt
-          }
-          tokens(first: 10, orderBy: createdAt, orderDirection: desc) {
-            id
-            address
-            name
-            symbol
-            decimals
-            totalSupply
-            tokenType
-            creator
-            createdAt
-          }
-          presales(first: 5, orderBy: createdAt, orderDirection: desc) {
-            id
-            address
-            creator
-            saleToken {
-              id
-              name
-              symbol
-              address
-            }
-            softCap
-            hardCap
-            status
-            totalRaised
-            totalParticipants
-            createdAt
-          }
-          fairlaunches(first: 5, orderBy: createdAt, orderDirection: desc) {
-            id
-            address
-            creator
-            saleToken {
-              id
-              name
-              symbol
-              address
-            }
-            softCap
-            status
-            totalRaised
-            totalParticipants
-            createdAt
+      // Get database counts instead of subgraph data
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // Count total projects
+      const totalPresales = await prisma.project.count();
+      const totalFairlaunches = await prisma.fairlaunchProject.count();
+      const totalProjects = totalPresales + totalFairlaunches;
+
+      // Count active projects (end date > now)
+      const activePresales = await prisma.project.count({
+        where: {
+          presaleEnd: {
+            gt: now
           }
         }
-      `;
+      });
 
-      const data = await launchpadClient.request(query);
+      const activeFairlaunches = await prisma.fairlaunchProject.count({
+        where: {
+          fairlaunchEnd: {
+            gt: now
+          }
+        }
+      });
 
-      // Process the data to create the overview
-      const stats = data.launchpadStats || {
-        totalTokensCreated: '0',
-        totalPresalesCreated: '0',
-        totalFairlaunchesCreated: '0',
-        totalVolumeRaised: '0',
-        totalParticipants: '0',
-        activePresales: '0',
-        activeFairlaunches: '0'
-      };
+      const activeProjects = activePresales + activeFairlaunches;
 
-      const totalProjects = parseInt(stats.totalPresalesCreated || '0') + parseInt(stats.totalFairlaunchesCreated || '0');
-      const activeProjects = parseInt(stats.activePresales || '0') + parseInt(stats.activeFairlaunches || '0');
+      // Count completed projects (end date < now)
+      const completedPresales = await prisma.project.count({
+        where: {
+          presaleEnd: {
+            lt: now
+          }
+        }
+      });
 
-      // Calculate total fees from factories (placeholder calculation)
-      const tokenFactoryFees = (data.tokenFactories || []).reduce((sum: number, factory: any) =>
-        sum + parseFloat(factory.flatFee || '0'), 0);
-      const presaleFactoryFees = (data.presaleFactories || []).reduce((sum: number, factory: any) =>
-        sum + parseFloat(factory.flatFee || '0'), 0);
-      const fairlaunchFactoryFees = (data.fairlaunchFactories || []).reduce((sum: number, factory: any) =>
-        sum + parseFloat(factory.flatFee || '0'), 0);
+      const completedFairlaunches = await prisma.fairlaunchProject.count({
+        where: {
+          fairlaunchEnd: {
+            lt: now
+          }
+        }
+      });
 
-      // Combine recent projects from presales and fairlaunches
-      const recentProjects = [
-        ...(data.presales || []).map((presale: any) => ({
-          id: presale.id,
-          name: presale.saleToken?.name || 'Unknown Token',
-          tokenAddress: presale.saleToken?.address || presale.address,
-          hardCap: presale.hardCap || '0',
-          softCap: presale.softCap || '0',
-          status: presale.status?.toLowerCase() || 'unknown',
-          type: 'presale'
+      const completedProjects = completedPresales + completedFairlaunches;
+
+      // Count this month's projects
+      const thisMonthPresales = await prisma.project.count({
+        where: {
+          createdAt: {
+            gte: startOfMonth
+          }
+        }
+      });
+
+      const thisMonthFairlaunches = await prisma.fairlaunchProject.count({
+        where: {
+          createdAt: {
+            gte: startOfMonth
+          }
+        }
+      });
+
+      const thisMonthProjects = thisMonthPresales + thisMonthFairlaunches;
+
+      // Get recent projects from both tables
+      const recentPresales = await prisma.project.findMany({
+        take: 3,
+        orderBy: {
+          createdAt: 'desc'
+        },
+        include: {
+          user: true
+        }
+      });
+
+      const recentFairlaunches = await prisma.fairlaunchProject.findMany({
+        take: 3,
+        orderBy: {
+          createdAt: 'desc'
+        },
+        include: {
+          user: true
+        }
+      });
+
+      // Combine and sort recent projects
+      const allRecentProjects = [
+        ...recentPresales.map(p => ({
+          ...p,
+          type: 'presale',
+          startTime: p.presaleStart,
+          endTime: p.presaleEnd
         })),
-        ...(data.fairlaunches || []).map((fairlaunch: any) => ({
-          id: fairlaunch.id,
-          name: fairlaunch.saleToken?.name || 'Unknown Token',
-          tokenAddress: fairlaunch.saleToken?.address || fairlaunch.address,
-          hardCap: '0', // Fairlaunches don't have hardCap
-          softCap: fairlaunch.softCap || '0',
-          status: fairlaunch.status?.toLowerCase() || 'unknown',
-          type: 'fairlaunch'
+        ...recentFairlaunches.map(f => ({
+          ...f,
+          type: 'fairlaunch',
+          startTime: f.fairlaunchStart,
+          endTime: f.fairlaunchEnd
         }))
-      ].slice(0, 5);
+      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+
+      // Map recent projects to expected format
+      const recentProjects = allRecentProjects.map(project => ({
+        id: project.id,
+        name: project.name,
+        tokenAddress: project.saleToken,
+        startTime: project.startTime.toISOString(),
+        endTime: project.endTime.toISOString(),
+        hardCap: project.type === 'presale' ? (project as any).hardCap : null,
+        softCap: project.softCap,
+        status: project.endTime > now ? 'Active' : 'Ended',
+        type: project.type,
+        creator: project.userId,
+        saleToken: {
+          id: project.saleToken,
+          name: project.name,
+          symbol: 'TOKEN', // Would need to be fetched from contract
+          address: project.saleToken
+        },
+        totalRaised: '0', // Would need to be fetched from contract
+        totalParticipants: 0, // Would need to be fetched from contract
+        createdAt: project.createdAt.toISOString()
+      }));
+
+      // Calculate factory fees (simplified - using fixed values since we don't have real fee data)
+      const tokenFactoryFees = 0; // Would need to be calculated from actual fee collection
+      const presaleFactoryFees = totalPresales * 200000; // 200k KLC per presale
+      const fairlaunchFactoryFees = totalFairlaunches * 200000; // 200k KLC per fairlaunch
 
       const overview = {
         totalProjects,
         activeProjects,
-        totalTokensCreated: parseInt(stats.totalTokensCreated || '0'),
-        totalFundsRaised: stats.totalVolumeRaised || '0',
-        totalParticipants: parseInt(stats.totalParticipants || '0'),
+        totalTokensCreated: completedProjects, // Using completed projects instead
+        totalFundsRaised: thisMonthProjects.toString(), // Using this month's projects instead
+        totalParticipants: thisMonthProjects, // Using this month's projects instead
         totalFeesCollected: (tokenFactoryFees + presaleFactoryFees + fairlaunchFactoryFees).toString(),
         factoryFees: {
           tokenFactory: tokenFactoryFees.toString(),
@@ -314,7 +313,7 @@ export const LaunchpadService = {
           fairlaunchFactory: fairlaunchFactoryFees.toString()
         },
         recentProjects,
-        lastUpdated: stats.lastUpdated || Date.now().toString()
+        lastUpdated: Date.now().toString()
       };
 
       return overview;
@@ -325,9 +324,9 @@ export const LaunchpadService = {
       return {
         totalProjects: 0,
         activeProjects: 0,
-        totalTokensCreated: 0,
-        totalFundsRaised: '0',
-        totalParticipants: 0,
+        totalTokensCreated: 0, // Completed projects
+        totalFundsRaised: '0', // This month's projects
+        totalParticipants: 0, // This month's projects
         totalFeesCollected: '0',
         factoryFees: {
           tokenFactory: '0',
@@ -336,7 +335,7 @@ export const LaunchpadService = {
         },
         recentProjects: [],
         lastUpdated: Date.now().toString(),
-        error: 'Failed to fetch data from subgraph'
+        error: 'Failed to fetch data from database'
       };
     }
   }

@@ -82,7 +82,7 @@ export interface IWalletService {
   getWalletByAddress(address: string): Promise<Wallet | null>;
   getWalletBalance(address: string): Promise<{
     klc: string;
-    tokens: { symbol: string; balance: string; }[];
+    tokens: { symbol: string; balance: string; address: string; }[];
   }>;
   exportWallet(wallet: Wallet, password: string): Promise<string>;
 }

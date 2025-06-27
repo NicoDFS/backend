@@ -58,6 +58,35 @@ export const fairlaunchResolvers = {
     },
 
     /**
+     * Get a specific confirmed fairlaunch project by contract address
+     */
+    confirmedFairlaunchByAddress: async (
+      _: any,
+      { contractAddress }: { contractAddress: string },
+      context: Context
+    ) => {
+      try {
+        const fairlaunch = await FairlaunchService.getConfirmedFairlaunchByAddress(contractAddress);
+
+        if (!fairlaunch) {
+          return null;
+        }
+
+        return {
+          ...fairlaunch,
+          fairlaunchStart: fairlaunch.fairlaunchStart.toISOString(),
+          fairlaunchEnd: fairlaunch.fairlaunchEnd.toISOString(),
+          deployedAt: fairlaunch.deployedAt.toISOString(),
+          createdAt: fairlaunch.createdAt.toISOString(),
+          user: { id: fairlaunch.userId } // Will be resolved by User resolver
+        };
+      } catch (error) {
+        console.error('Error fetching fairlaunch project by address:', error);
+        throw new Error('Failed to fetch fairlaunch project by address');
+      }
+    },
+
+    /**
      * Get confirmed fairlaunch projects for the authenticated user
      */
     myConfirmedFairlaunches: async (

@@ -87,6 +87,8 @@ export const ProjectService = {
         throw new Error('Required project fields are missing');
       }
 
+
+
       // Check if project with this contract address or transaction hash already exists
       const existingProject = await prisma.project.findFirst({
         where: {
@@ -295,6 +297,59 @@ export const ProjectService = {
       };
     } catch (error) {
       console.error('❌ Error fetching confirmed project:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get a specific confirmed project by contract address
+   */
+  async getConfirmedProjectByAddress(contractAddress: string): Promise<Project | null> {
+    try {
+      const project = await prisma.project.findFirst({
+        where: { contractAddress },
+        include: {
+          user: true
+        }
+      });
+
+      if (!project) {
+        return null;
+      }
+
+      return {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        websiteUrl: project.websiteUrl || undefined,
+        whitepaperUrl: project.whitepaperUrl || undefined,
+        githubUrl: project.githubUrl || undefined,
+        discordUrl: project.discordUrl || undefined,
+        telegramUrl: project.telegramUrl || undefined,
+        twitterUrl: project.twitterUrl || undefined,
+        additionalSocialUrl: project.additionalSocialUrl || undefined,
+        saleToken: project.saleToken,
+        baseToken: project.baseToken,
+        tokenRate: project.tokenRate,
+        liquidityRate: project.liquidityRate,
+        minContribution: project.minContribution || undefined,
+        maxContribution: project.maxContribution || undefined,
+        softCap: project.softCap,
+        hardCap: project.hardCap,
+        liquidityPercent: project.liquidityPercent,
+        presaleStart: project.presaleStart,
+        presaleEnd: project.presaleEnd,
+        lpLockDuration: project.lpLockDuration,
+        lpRecipient: project.lpRecipient || undefined,
+        contractAddress: project.contractAddress,
+        transactionHash: project.transactionHash,
+        blockNumber: project.blockNumber,
+        deployedAt: project.deployedAt,
+        createdAt: project.createdAt,
+        userId: project.userId
+      };
+    } catch (error) {
+      console.error('❌ Error fetching confirmed project by address:', error);
       throw error;
     }
   },

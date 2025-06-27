@@ -32,13 +32,13 @@ export const projectResolvers = {
      * Get a specific confirmed project by ID
      */
     confirmedProject: async (
-      _: any, 
-      { id }: { id: string }, 
+      _: any,
+      { id }: { id: string },
       context: Context
     ) => {
       try {
         const project = await ProjectService.getConfirmedProject(id);
-        
+
         if (!project) {
           return null;
         }
@@ -54,6 +54,35 @@ export const projectResolvers = {
       } catch (error) {
         console.error('Error fetching confirmed project:', error);
         throw new Error('Failed to fetch confirmed project');
+      }
+    },
+
+    /**
+     * Get a specific confirmed project by contract address
+     */
+    confirmedProjectByAddress: async (
+      _: any,
+      { contractAddress }: { contractAddress: string },
+      context: Context
+    ) => {
+      try {
+        const project = await ProjectService.getConfirmedProjectByAddress(contractAddress);
+
+        if (!project) {
+          return null;
+        }
+
+        return {
+          ...project,
+          presaleStart: project.presaleStart.toISOString(),
+          presaleEnd: project.presaleEnd.toISOString(),
+          deployedAt: project.deployedAt.toISOString(),
+          createdAt: project.createdAt.toISOString(),
+          user: { id: project.userId } // Will be resolved by User resolver
+        };
+      } catch (error) {
+        console.error('Error fetching confirmed project by address:', error);
+        throw new Error('Failed to fetch confirmed project by address');
       }
     },
 
@@ -94,14 +123,14 @@ export const projectResolvers = {
      * This is the ONLY way projects get saved to the database
      */
     saveProjectAfterDeployment: async (
-      _: any, 
-      { input }: { input: ProjectDeploymentData }, 
+      _: any,
+      { input }: { input: ProjectDeploymentData },
       context: Context
     ) => {
       try {
         // Check if user is authenticated
         if (!context.user) {
-          throw new Error('Authentication required');
+          throw new Error('Authentication required to create presales. Please login to your account.');
         }
 
         // Add user ID to the input data
