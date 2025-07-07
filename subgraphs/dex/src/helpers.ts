@@ -1,174 +1,234 @@
-/* eslint-disable prefer-const */
-import { Address, BigDecimal, BigInt } from '@graphprotocol/graph-ts'
+import { BigInt, BigDecimal, Address } from '@graphprotocol/graph-ts';
+import { ERC20 } from '../generated/KalyswapFactory/ERC20';
+import { Factory, Token, Pair, DayData, PairDayData, TokenDayData } from '../generated/schema';
 
-import { ERC20 } from '../generated/Factory/ERC20'
-import { ERC20NameBytes } from '../generated/Factory/ERC20NameBytes'
-import { ERC20SymbolBytes } from '../generated/Factory/ERC20SymbolBytes'
-import { User } from '../generated/schema'
-import { SKIP_TOTAL_SUPPLY, STATIC_TOKEN_DEFINITIONS, TokenDefinition } from './chain'
-import { ONE_BI, ZERO_BD, ZERO_BI } from './constants'
+export let ZERO_BI = BigInt.fromI32(0);
+export let ONE_BI = BigInt.fromI32(1);
+export let ZERO_BD = BigDecimal.fromString('0');
+export let ONE_BD = BigDecimal.fromString('1');
+export let BI_18 = BigInt.fromI32(18);
+
+export let WKLC_ADDRESS = '0x069255299Bb729399f3CECaBdc73d15d3D10a2A3';
+export let KSWAP_ADDRESS = '0xCC93b84cEed74Dc28c746b7697d6fA477ffFf65a';
+export let FACTORY_ADDRESS = '0xD42Af909d323D88e0E933B6c50D3e91c279004ca';
+export let WKLC_KSWAP_PAIR = '0xf3E034650E1c2597A0af75012C1854247f271ee0';
 
 export function exponentToBigDecimal(decimals: BigInt): BigDecimal {
-  let bd = BigDecimal.fromString('1')
-  for (let i = ZERO_BI; i.lt(decimals); i = i.plus(ONE_BI)) {
-    bd = bd.times(BigDecimal.fromString('10'))
+  let bd = BigDecimal.fromString('1');
+  for (let i = ZERO_BI; i.lt(decimals as BigInt); i = i.plus(ONE_BI)) {
+    bd = bd.times(BigDecimal.fromString('10'));
   }
-  return bd
+  return bd;
 }
 
-export function bigDecimalExp18(): BigDecimal {
-  return BigDecimal.fromString('1000000000000000000')
-}
-
-export function convertKlcToDecimal(klc: BigInt): BigDecimal {
-  return klc.toBigDecimal().div(exponentToBigDecimal(BigInt.fromI32(18)))
-}
-
-export function convertTokenToDecimal(tokenAmount: BigInt, exchangeDecimals: BigInt): BigDecimal {
-  if (exchangeDecimals == ZERO_BI) {
-    return tokenAmount.toBigDecimal()
+export function convertTokenToDecimal(tokenAmount: BigInt, exchangeDecimals: i32): BigDecimal {
+  if (exchangeDecimals == 0) {
+    return tokenAmount.toBigDecimal();
   }
-  return tokenAmount.toBigDecimal().div(exponentToBigDecimal(exchangeDecimals))
-}
-
-export function equalToZero(value: BigDecimal): boolean {
-  const formattedVal = value.toString()
-  const zero = ZERO_BD.toString()
-  if (zero == formattedVal) {
-    return true
-  }
-  return false
-}
-
-export function isNullKlcValue(value: string): boolean {
-  return value == '0x0000000000000000000000000000000000000000000000000000000000000001'
-}
-
-function getStaticDefinition(tokenAddress: Address): TokenDefinition | null {
-  let staticDefinitions = STATIC_TOKEN_DEFINITIONS
-  for (let i = 0; i < staticDefinitions.length; i++) {
-    if (staticDefinitions[i].address == tokenAddress.toHexString()) {
-      return staticDefinitions[i]
-    }
-  }
-  return null
+  return tokenAmount.toBigDecimal().div(exponentToBigDecimal(BigInt.fromI32(exchangeDecimals)));
 }
 
 export function fetchTokenSymbol(tokenAddress: Address): string {
-  // static definitions overrides
-  let staticDefinition = getStaticDefinition(tokenAddress)
-  if (staticDefinition != null) {
-    return (staticDefinition as TokenDefinition).symbol
+  // For known tokens, return hardcoded symbols
+  if (tokenAddress.toHexString() == WKLC_ADDRESS) {
+    return 'WKLC';
+  } else if (tokenAddress.toHexString() == KSWAP_ADDRESS) {
+    return 'KSWAP';
   }
 
-  let contract = ERC20.bind(tokenAddress)
-  let contractSymbolBytes = ERC20SymbolBytes.bind(tokenAddress)
+  // For other tokens, try to call the contract
+  let contract = ERC20.bind(tokenAddress);
+  let symbolValue = 'TOKEN';
 
-  // try types string and bytes32 for symbol
-  let symbolValue = 'unknown'
-  let symbolResult = contract.try_symbol()
-  if (symbolResult.reverted) {
-    let symbolResultBytes = contractSymbolBytes.try_symbol()
-    if (!symbolResultBytes.reverted) {
-      // for broken pairs that have no symbol function exposed
-      if (!isNullKlcValue(symbolResultBytes.value.toString())) {
-        // Safely convert bytes32 to string to avoid UTF-16 issues
-        let bytesString = symbolResultBytes.value.toString()
-        // Filter out null bytes and invalid characters
-        let cleanString = ''
-        for (let i = 0; i < bytesString.length; i++) {
-          let char = bytesString.charAt(i)
-          if (char != '\0' && char.charCodeAt(0) > 31 && char.charCodeAt(0) < 127) {
-            cleanString += char
-          }
-        }
-        symbolValue = cleanString.length > 0 ? cleanString : 'unknown'
-      }
-    }
-  } else {
-    symbolValue = symbolResult.value
+  // Try to call the symbol method
+  let symbolResult = contract.try_symbol();
+  if (!symbolResult.reverted) {
+    symbolValue = symbolResult.value;
   }
 
-  return symbolValue
+  return symbolValue;
 }
 
 export function fetchTokenName(tokenAddress: Address): string {
-  // static definitions overrides
-  let staticDefinition = getStaticDefinition(tokenAddress)
-  if (staticDefinition != null) {
-    return (staticDefinition as TokenDefinition).name
+  // For known tokens, return hardcoded names
+  if (tokenAddress.toHexString() == WKLC_ADDRESS) {
+    return 'Wrapped KLC';
+  } else if (tokenAddress.toHexString() == KSWAP_ADDRESS) {
+    return 'KalySwap Token';
   }
 
-  let contract = ERC20.bind(tokenAddress)
-  let contractNameBytes = ERC20NameBytes.bind(tokenAddress)
+  // For other tokens, try to call the contract
+  let contract = ERC20.bind(tokenAddress);
+  let nameValue = 'Unknown Token';
 
-  // try types string and bytes32 for name
-  let nameValue = 'unknown'
-  let nameResult = contract.try_name()
-  if (nameResult.reverted) {
-    let nameResultBytes = contractNameBytes.try_name()
-    if (!nameResultBytes.reverted) {
-      // for broken exchanges that have no name function exposed
-      if (!isNullKlcValue(nameResultBytes.value.toString())) {
-        // Safely convert bytes32 to string to avoid UTF-16 issues
-        let bytesString = nameResultBytes.value.toString()
-        // Filter out null bytes and invalid characters
-        let cleanString = ''
-        for (let i = 0; i < bytesString.length; i++) {
-          let char = bytesString.charAt(i)
-          if (char != '\0' && char.charCodeAt(0) > 31 && char.charCodeAt(0) < 127) {
-            cleanString += char
-          }
-        }
-        nameValue = cleanString.length > 0 ? cleanString : 'unknown'
-      }
-    }
-  } else {
-    nameValue = nameResult.value
+  // Try to call the name method
+  let nameResult = contract.try_name();
+  if (!nameResult.reverted) {
+    nameValue = nameResult.value;
   }
 
-  return nameValue
+  return nameValue;
+}
+
+export function fetchTokenDecimals(tokenAddress: Address): i32 {
+  // For known tokens, return hardcoded decimals
+  if (tokenAddress.toHexString() == WKLC_ADDRESS) {
+    return 18;
+  } else if (tokenAddress.toHexString() == KSWAP_ADDRESS) {
+    return 18;
+  }
+
+  // For other tokens, try to call the contract
+  let contract = ERC20.bind(tokenAddress);
+  let decimals = 18; // Default to 18 decimals
+
+  // Try to call the decimals method
+  let decimalsResult = contract.try_decimals();
+  if (!decimalsResult.reverted) {
+    decimals = decimalsResult.value;
+  }
+
+  return decimals;
 }
 
 export function fetchTokenTotalSupply(tokenAddress: Address): BigInt {
-  if (SKIP_TOTAL_SUPPLY.includes(tokenAddress.toHexString())) {
-    return BigInt.fromI32(0)
+  // For known tokens, return hardcoded total supply
+  if (tokenAddress.toHexString() == WKLC_ADDRESS || tokenAddress.toHexString() == KSWAP_ADDRESS) {
+    return BigInt.fromString('1000000000000000000000000');
   }
 
-  let contract = ERC20.bind(tokenAddress)
-  let totalSupplyValue = BigInt.fromI32(0)
-  let totalSupplyResult = contract.try_totalSupply()
+  // For other tokens, try to call the contract
+  let contract = ERC20.bind(tokenAddress);
+  let totalSupply = BigInt.fromString('0');
+
+  // Try to call the totalSupply method
+  let totalSupplyResult = contract.try_totalSupply();
   if (!totalSupplyResult.reverted) {
-    totalSupplyValue = totalSupplyResult.value
+    totalSupply = totalSupplyResult.value;
   }
-  return totalSupplyValue
+
+  return totalSupply;
 }
 
-export function fetchTokenDecimals(tokenAddress: Address): BigInt {
-  // static definitions overrides
-  let staticDefinition = getStaticDefinition(tokenAddress)
-  if (staticDefinition != null) {
-    return (staticDefinition as TokenDefinition).decimals
-  }
-
-  let contract = ERC20.bind(tokenAddress)
-  // try types uint8 for decimals
-  let decimalValue = 0
-  let decimalResult = contract.try_decimals()
-  if (!decimalResult.reverted) {
-    decimalValue = decimalResult.value
-  }
-  return BigInt.fromI32(decimalValue)
+export function getKLCPriceInUSD(): BigDecimal {
+  // For simplicity, we'll use a fixed price initially
+  // In a real implementation, you would calculate this from a stable pair
+  return BigDecimal.fromString('1.0');
 }
 
-export function createUser(address: Address): void {
-  let user = User.load(address.toHexString())
-  if (!user) {
-    user = new User(address.toHexString())
-    user.save()
+export function findKLCPerToken(token: Token): BigDecimal {
+  if (token.address.toHexString() == WKLC_ADDRESS) {
+    return ONE_BD;
   }
+
+  // For simplicity, we'll use a fixed value initially
+  // In a real implementation, you would calculate this from pairs
+  return BigDecimal.fromString('0.01');
 }
 
+export function getTrackedVolumeUSD(
+  amount0In: BigDecimal,
+  amount1In: BigDecimal,
+  amount0Out: BigDecimal,
+  amount1Out: BigDecimal,
+  token0: Token,
+  token1: Token
+): BigDecimal {
+  let price0 = token0.derivedKLC.times(getKLCPriceInUSD());
+  let price1 = token1.derivedKLC.times(getKLCPriceInUSD());
 
+  let volume = ZERO_BD;
+  if (amount0In.gt(ZERO_BD)) {
+    volume = volume.plus(amount0In.times(price0));
+  }
+  if (amount1In.gt(ZERO_BD)) {
+    volume = volume.plus(amount1In.times(price1));
+  }
+  if (amount0Out.gt(ZERO_BD)) {
+    volume = volume.plus(amount0Out.times(price0));
+  }
+  if (amount1Out.gt(ZERO_BD)) {
+    volume = volume.plus(amount1Out.times(price1));
+  }
 
+  return volume.div(BigDecimal.fromString('2'));
+}
 
+export function getTrackedLiquidityUSD(
+  amount0: BigDecimal,
+  token0: Token,
+  amount1: BigDecimal,
+  token1: Token
+): BigDecimal {
+  let price0 = token0.derivedKLC.times(getKLCPriceInUSD());
+  let price1 = token1.derivedKLC.times(getKLCPriceInUSD());
+
+  return amount0.times(price0).plus(amount1.times(price1));
+}
+
+export function createDayData(timestamp: BigInt, factory: Factory): DayData {
+  let dayID = timestamp.toI32() / 86400;
+  let dayStartTimestamp = dayID * 86400;
+  let dayData = DayData.load(dayID.toString());
+
+  if (dayData === null) {
+    dayData = new DayData(dayID.toString());
+    dayData.date = dayID;
+    dayData.factory = factory.id;
+    dayData.volumeKLC = ZERO_BD;
+    dayData.volumeUSD = ZERO_BD;
+    dayData.untrackedVolume = ZERO_BD;
+    dayData.liquidityKLC = ZERO_BD;
+    dayData.liquidityUSD = ZERO_BD;
+    dayData.txCount = ZERO_BI;
+  }
+
+  return dayData as DayData;
+}
+
+export function createPairDayData(timestamp: BigInt, pair: Pair): PairDayData {
+  let dayID = timestamp.toI32() / 86400;
+  let dayStartTimestamp = dayID * 86400;
+  let dayPairID = pair.id.concat('-').concat(dayID.toString());
+  let dayPairData = PairDayData.load(dayPairID);
+
+  if (dayPairData === null) {
+    dayPairData = new PairDayData(dayPairID);
+    dayPairData.date = dayID;
+    dayPairData.pair = pair.id;
+    dayPairData.token0 = pair.token0;
+    dayPairData.token1 = pair.token1;
+    dayPairData.reserve0 = ZERO_BD;
+    dayPairData.reserve1 = ZERO_BD;
+    dayPairData.totalSupply = ZERO_BD;
+    dayPairData.reserveUSD = ZERO_BD;
+    dayPairData.volumeToken0 = ZERO_BD;
+    dayPairData.volumeToken1 = ZERO_BD;
+    dayPairData.volumeUSD = ZERO_BD;
+    dayPairData.txCount = ZERO_BI;
+  }
+
+  return dayPairData as PairDayData;
+}
+
+export function createTokenDayData(timestamp: BigInt, token: Token): TokenDayData {
+  let dayID = timestamp.toI32() / 86400;
+  let dayStartTimestamp = dayID * 86400;
+  let tokenDayID = token.id.concat('-').concat(dayID.toString());
+  let tokenDayData = TokenDayData.load(tokenDayID);
+
+  if (tokenDayData === null) {
+    tokenDayData = new TokenDayData(tokenDayID);
+    tokenDayData.date = dayID;
+    tokenDayData.token = token.id;
+    tokenDayData.volume = ZERO_BD;
+    tokenDayData.volumeKLC = ZERO_BD;
+    tokenDayData.volumeUSD = ZERO_BD;
+    tokenDayData.liquidityKLC = ZERO_BD;
+    tokenDayData.liquidityUSD = ZERO_BD;
+    tokenDayData.priceUSD = ZERO_BD;
+    tokenDayData.txCount = ZERO_BI;
+  }
+
+  return tokenDayData as TokenDayData;
+}

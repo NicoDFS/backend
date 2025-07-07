@@ -1,0 +1,344 @@
+specVersion: 1.2.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  # LiquidityPoolManagerV2 - tracks whitelisted pools and weights
+  - kind: ethereum
+    name: LiquidityPoolManagerV2
+    network: kalychain
+    source:
+      address: "0xe83e7ede1358FA87e5039CF8B1cffF383Bc2896A"
+      abi: LiquidityPoolManagerV2
+      startBlock: 6880890
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - LiquidityPoolManager
+        - WhitelistedPool
+      abis:
+        - name: LiquidityPoolManagerV2
+          file: ../../src/blockchain/abis/dex/liqudityPoolManagerV2ABI.json
+      eventHandlers:
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+      file: ./src/liquidity-pool-manager.ts
+
+  # StakingRewards contracts for farming
+  - kind: ethereum
+    name: StakingRewardsWKLCDAI
+    network: kalychain
+    source:
+      address: "0x2bD4B7f303C1f372689d52A55ec202E0cf831a26"  # WKLC-DAI StakingRewards contract
+      abi: StakingRewards
+      startBlock: 6885000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FarmingPool
+        - Farmer
+        - FarmStakeEvent
+        - FarmWithdrawEvent
+        - FarmRewardEvent
+        - FarmRewardAddedEvent
+        - FarmRewardsDurationUpdatedEvent
+      abis:
+        - name: StakingRewards
+          file: ../../src/blockchain/abis/dex/stakingRewardsABI.json
+      eventHandlers:
+        - event: Staked(indexed address,uint256)
+          handler: handleStaked
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+        - event: RewardPaid(indexed address,uint256)
+          handler: handleRewardPaid
+        - event: RewardAdded(uint256)
+          handler: handleRewardAdded
+        - event: RewardsDurationUpdated(uint256)
+          handler: handleRewardsDurationUpdated
+      file: ./src/farming.ts
+
+  - kind: ethereum
+    name: StakingRewardsWKLCUSDT
+    network: kalychain
+    source:
+      address: "0xD9238e463dc69c976C5452e8159100DfA1a5A157"  # WKLC-USDT StakingRewards contract
+      abi: StakingRewards
+      startBlock: 6885000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FarmingPool
+        - Farmer
+        - FarmStakeEvent
+        - FarmWithdrawEvent
+        - FarmRewardEvent
+        - FarmRewardAddedEvent
+        - FarmRewardsDurationUpdatedEvent
+      abis:
+        - name: StakingRewards
+          file: ../../src/blockchain/abis/dex/stakingRewardsABI.json
+      eventHandlers:
+        - event: Staked(indexed address,uint256)
+          handler: handleStaked
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+        - event: RewardPaid(indexed address,uint256)
+          handler: handleRewardPaid
+        - event: RewardAdded(uint256)
+          handler: handleRewardAdded
+        - event: RewardsDurationUpdated(uint256)
+          handler: handleRewardsDurationUpdated
+      file: ./src/farming.ts
+
+  - kind: ethereum
+    name: StakingRewardsWKLCUSDC
+    network: kalychain
+    source:
+      address: "0x9FC553A1b7241A24Aef20894375c6da706205734"  # WKLC-USDC StakingRewards contract
+      abi: StakingRewards
+      startBlock: 6885000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FarmingPool
+        - Farmer
+        - FarmStakeEvent
+        - FarmWithdrawEvent
+        - FarmRewardEvent
+        - FarmRewardAddedEvent
+        - FarmRewardsDurationUpdatedEvent
+      abis:
+        - name: StakingRewards
+          file: ../../src/blockchain/abis/dex/stakingRewardsABI.json
+      eventHandlers:
+        - event: Staked(indexed address,uint256)
+          handler: handleStaked
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+        - event: RewardPaid(indexed address,uint256)
+          handler: handleRewardPaid
+        - event: RewardAdded(uint256)
+          handler: handleRewardAdded
+        - event: RewardsDurationUpdated(uint256)
+          handler: handleRewardsDurationUpdated
+      file: ./src/farming.ts
+
+  - kind: ethereum
+    name: StakingRewardsWKLCETH
+    network: kalychain
+    source:
+      address: "0x85723D1c8c4d1944992EB02532de53037C98A667"  # WKLC-ETH StakingRewards contract
+      abi: StakingRewards
+      startBlock: 6885000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FarmingPool
+        - Farmer
+        - FarmStakeEvent
+        - FarmWithdrawEvent
+        - FarmRewardEvent
+        - FarmRewardAddedEvent
+        - FarmRewardsDurationUpdatedEvent
+      abis:
+        - name: StakingRewards
+          file: ../../src/blockchain/abis/dex/stakingRewardsABI.json
+      eventHandlers:
+        - event: Staked(indexed address,uint256)
+          handler: handleStaked
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+        - event: RewardPaid(indexed address,uint256)
+          handler: handleRewardPaid
+        - event: RewardAdded(uint256)
+          handler: handleRewardAdded
+        - event: RewardsDurationUpdated(uint256)
+          handler: handleRewardsDurationUpdated
+      file: ./src/farming.ts
+
+  - kind: ethereum
+    name: StakingRewardsWKLCPOL
+    network: kalychain
+    source:
+      address: "0xE2912ecBd06185A6DBA68d49b700AD06e98055E4"  # WKLC-POL StakingRewards contract
+      abi: StakingRewards
+      startBlock: 6885000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FarmingPool
+        - Farmer
+        - FarmStakeEvent
+        - FarmWithdrawEvent
+        - FarmRewardEvent
+        - FarmRewardAddedEvent
+        - FarmRewardsDurationUpdatedEvent
+      abis:
+        - name: StakingRewards
+          file: ../../src/blockchain/abis/dex/stakingRewardsABI.json
+      eventHandlers:
+        - event: Staked(indexed address,uint256)
+          handler: handleStaked
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+        - event: RewardPaid(indexed address,uint256)
+          handler: handleRewardPaid
+        - event: RewardAdded(uint256)
+          handler: handleRewardAdded
+        - event: RewardsDurationUpdated(uint256)
+          handler: handleRewardsDurationUpdated
+      file: ./src/farming.ts
+
+  - kind: ethereum
+    name: StakingRewardsWKLCBNB
+    network: kalychain
+    source:
+      address: "0xA3eB9877968DBe481B8D72797035D39CC9656733"  # WKLC-BNB StakingRewards contract
+      abi: StakingRewards
+      startBlock: 6885000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FarmingPool
+        - Farmer
+        - FarmStakeEvent
+        - FarmWithdrawEvent
+        - FarmRewardEvent
+        - FarmRewardAddedEvent
+        - FarmRewardsDurationUpdatedEvent
+      abis:
+        - name: StakingRewards
+          file: ../../src/blockchain/abis/dex/stakingRewardsABI.json
+      eventHandlers:
+        - event: Staked(indexed address,uint256)
+          handler: handleStaked
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+        - event: RewardPaid(indexed address,uint256)
+          handler: handleRewardPaid
+        - event: RewardAdded(uint256)
+          handler: handleRewardAdded
+        - event: RewardsDurationUpdated(uint256)
+          handler: handleRewardsDurationUpdated
+      file: ./src/farming.ts
+
+  - kind: ethereum
+    name: StakingRewardsWKLCWBTC
+    network: kalychain
+    source:
+      address: "0x3B7c8132B3253b9EBBdF08Eb849254eFFe22664b"  # WKLC-WBTC StakingRewards contract
+      abi: StakingRewards
+      startBlock: 6885000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FarmingPool
+        - Farmer
+        - FarmStakeEvent
+        - FarmWithdrawEvent
+        - FarmRewardEvent
+        - FarmRewardAddedEvent
+        - FarmRewardsDurationUpdatedEvent
+      abis:
+        - name: StakingRewards
+          file: ../../src/blockchain/abis/dex/stakingRewardsABI.json
+      eventHandlers:
+        - event: Staked(indexed address,uint256)
+          handler: handleStaked
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+        - event: RewardPaid(indexed address,uint256)
+          handler: handleRewardPaid
+        - event: RewardAdded(uint256)
+          handler: handleRewardAdded
+        - event: RewardsDurationUpdated(uint256)
+          handler: handleRewardsDurationUpdated
+      file: ./src/farming.ts
+
+  - kind: ethereum
+    name: StakingRewardsKSWAPWKLC
+    network: kalychain
+    source:
+      address: "0xA9f1eB89452f825Bbc59007FAe13233953910582"  # KSWAP-WKLC StakingRewards contract
+      abi: StakingRewards
+      startBlock: 6885000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FarmingPool
+        - Farmer
+        - FarmStakeEvent
+        - FarmWithdrawEvent
+        - FarmRewardEvent
+        - FarmRewardAddedEvent
+        - FarmRewardsDurationUpdatedEvent
+      abis:
+        - name: StakingRewards
+          file: ../../src/blockchain/abis/dex/stakingRewardsABI.json
+      eventHandlers:
+        - event: Staked(indexed address,uint256)
+          handler: handleStaked
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+        - event: RewardPaid(indexed address,uint256)
+          handler: handleRewardPaid
+        - event: RewardAdded(uint256)
+          handler: handleRewardAdded
+        - event: RewardsDurationUpdated(uint256)
+          handler: handleRewardsDurationUpdated
+      file: ./src/farming.ts
+
+  - kind: ethereum
+    name: StakingRewardsKSWAPUSDT
+    network: kalychain
+    source:
+      address: "0x13545afF650C1A1982F70B8e20BB689A1Da4A302"  # KSWAP-USDT StakingRewards contract
+      abi: StakingRewards
+      startBlock: 6885000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FarmingPool
+        - Farmer
+        - FarmStakeEvent
+        - FarmWithdrawEvent
+        - FarmRewardEvent
+        - FarmRewardAddedEvent
+        - FarmRewardsDurationUpdatedEvent
+      abis:
+        - name: StakingRewards
+          file: ../../src/blockchain/abis/dex/stakingRewardsABI.json
+      eventHandlers:
+        - event: Staked(indexed address,uint256)
+          handler: handleStaked
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+        - event: RewardPaid(indexed address,uint256)
+          handler: handleRewardPaid
+        - event: RewardAdded(uint256)
+          handler: handleRewardAdded
+        - event: RewardsDurationUpdated(uint256)
+          handler: handleRewardsDurationUpdated
+      file: ./src/farming.ts

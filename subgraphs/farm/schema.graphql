@@ -1,0 +1,114 @@
+# Farming-focused schema for LP farming functionality
+
+# LiquidityPoolManager - manages whitelisted pools and weights
+type LiquidityPoolManager @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  wklc: Bytes!
+  kswap: Bytes!
+  treasuryVester: Bytes!
+  klcKswapPair: Bytes!
+  klcSplit: BigInt!
+  kswapSplit: BigInt!
+  splitPools: Boolean!
+  unallocatedKswap: BigInt!
+  whitelistedPools: [WhitelistedPool!]! @derivedFrom(field: "manager")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+# WhitelistedPool - tracks which LP pairs are eligible for farming rewards
+type WhitelistedPool @entity(immutable: false) {
+  id: ID!
+  manager: LiquidityPoolManager!
+  pairAddress: String!  # LP pair contract address
+  weight: BigInt!       # Reward weight for this pool
+  stakingPool: FarmingPool # Reference to the actual staking contract
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+# FarmingPool - represents a StakingRewards contract for LP farming
+type FarmingPool @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  stakingToken: String!    # LP token address (simplified)
+  rewardsToken: String!    # KSWAP token address (simplified)
+  totalStaked: BigInt!
+  rewardRate: BigInt!
+  rewardsDuration: BigInt!
+  periodFinish: BigInt!
+  lastUpdateTime: BigInt!
+  rewardPerTokenStored: BigInt!
+  farmers: [Farmer!]! @derivedFrom(field: "pool")
+  stakeEvents: [FarmStakeEvent!]! @derivedFrom(field: "pool")
+  withdrawEvents: [FarmWithdrawEvent!]! @derivedFrom(field: "pool")
+  rewardEvents: [FarmRewardEvent!]! @derivedFrom(field: "pool")
+  rewardAddedEvents: [FarmRewardAddedEvent!]! @derivedFrom(field: "pool")
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+# Farmer - represents a user's position in a farming pool
+type Farmer @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  pool: FarmingPool!
+  stakedAmount: BigInt!
+  rewards: BigInt!
+  rewardPerTokenPaid: BigInt!
+  stakeEvents: [FarmStakeEvent!]! @derivedFrom(field: "farmer")
+  withdrawEvents: [FarmWithdrawEvent!]! @derivedFrom(field: "farmer")
+  rewardEvents: [FarmRewardEvent!]! @derivedFrom(field: "farmer")
+  lastAction: String!
+  lastActionTimestamp: BigInt!
+}
+
+# Events for farming activities
+type FarmStakeEvent @entity(immutable: true) {
+  id: ID!
+  farmer: Farmer!
+  pool: FarmingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type FarmWithdrawEvent @entity(immutable: true) {
+  id: ID!
+  farmer: Farmer!
+  pool: FarmingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type FarmRewardEvent @entity(immutable: true) {
+  id: ID!
+  farmer: Farmer!
+  pool: FarmingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type FarmRewardAddedEvent @entity(immutable: true) {
+  id: ID!
+  pool: FarmingPool!
+  amount: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+type FarmRewardsDurationUpdatedEvent @entity(immutable: true) {
+  id: ID!
+  pool: FarmingPool!
+  newDuration: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}

@@ -7,158 +7,35 @@ dataSources:
     network: kalychain
     source:
       address: "0xD42Af909d323D88e0E933B6c50D3e91c279004ca"
-      abi: Factory
+      abi: KalyswapFactory
       startBlock: 6880688
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - KalyswapFactory
+        - Factory
         - Token
         - Pair
-        - Bundle
-        - PairTokenLookup
+        - PairCreatedEvent
       abis:
-        - name: Factory
+        - name: KalyswapFactory
           file: ../../src/blockchain/abis/dex/factoryABI.json
+        - name: KalyswapPair
+          file: ../../src/blockchain/abis/dex/pairABI.json
         - name: ERC20
-          file: ../../src/blockchain/abis/dex/erc20ABI.json
-        - name: ERC20SymbolBytes
-          file: ../../src/blockchain/abis/dex/erc20ABI.json
-        - name: ERC20NameBytes
           file: ../../src/blockchain/abis/dex/erc20ABI.json
       eventHandlers:
         - event: PairCreated(indexed address,indexed address,address,uint256)
-          handler: handleNewPair
+          handler: handlePairCreated
       file: ./src/factory.ts
-
-# Temporarily disabled due to entity lookup error - will re-enable after core DEX is working
-#  - kind: ethereum
-#    name: KswapToken
-#    network: kalychain
-#    source:
-#      address: "0xCC93b84cEed74Dc28c746b7697d6fA477ffFf65a"  # KSWAP token address
-#      abi: KswapToken
-#      startBlock: 6880633  # Replace with the actual deployment block
-#    mapping:
-#      kind: ethereum/events
-#      apiVersion: 0.0.7
-#      language: wasm/assemblyscript
-#      entities:
-#        - Token
-#        - TransferEvent
-#        - ApprovalEvent
-#      abis:
-#        - name: KswapToken
-#          file: ../../src/blockchain/abis/dex/kswapABI.json
-#        - name: ERC20
-#          file: ../../src/blockchain/abis/dex/erc20ABI.json
-#      eventHandlers:
-#        - event: Transfer(indexed address,indexed address,uint256)
-#          handler: handleKswapTransfer
-#        - event: Approval(indexed address,indexed address,uint256)
-#          handler: handleKswapApproval
-#      file: ./src/kswap.ts
-
-  - kind: ethereum
-    name: StakingRewards
-    network: kalychain
-    source:
-      address: "0x2bD4B7f303C1f372689d52A55ec202E0cf831a26"  # StakingRewards contract address
-      abi: StakingRewards
-      startBlock: 6880890  # Fixed to match other contracts deployment timeframe
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - StakingPool
-        - Staker
-        - StakeEvent
-        - WithdrawEvent
-        - RewardEvent
-        - RewardAddedEvent
-      abis:
-        - name: StakingRewards
-          file: ../../src/blockchain/abis/dex/stakingRewardsABI.json
-        - name: ERC20
-          file: ../../src/blockchain/abis/dex/erc20ABI.json
-      eventHandlers:
-        - event: Staked(indexed address,uint256)
-          handler: handleStaked
-        - event: Withdrawn(indexed address,uint256)
-          handler: handleWithdrawn
-        - event: RewardPaid(indexed address,uint256)
-          handler: handleRewardPaid
-        - event: RewardAdded(uint256)
-          handler: handleRewardAdded
-        - event: RewardsDurationUpdated(uint256)
-          handler: handleRewardsDurationUpdated
-      file: ./src/staking.ts
-
-  - kind: ethereum
-    name: LiquidityPoolManagerV2
-    network: kalychain
-    source:
-      address: "0xe83e7ede1358FA87e5039CF8B1cffF383Bc2896A"  # LiquidityPoolManagerV2 contract address
-      abi: LiquidityPoolManagerV2
-      startBlock: 6880890  # Replace with the actual deployment block
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - LiquidityPoolManager
-        - WhitelistedPool
-      abis:
-        - name: LiquidityPoolManagerV2
-          file: ../../src/blockchain/abis/dex/liqudityPoolManagerV2ABI.json
-        - name: Pair
-          file: ../../src/blockchain/abis/dex/pairABI.json
-        - name: ERC20
-          file: ../../src/blockchain/abis/dex/erc20ABI.json
-      eventHandlers:
-        - event: OwnershipTransferred(indexed address,indexed address)
-          handler: handleOwnershipTransferred
-      file: ./src/liquidity-pool-manager.ts
-
-  - kind: ethereum
-    name: TreasuryVester
-    network: kalychain
-    source:
-      address: "0x4C4b968232a8603e2D1e53AB26E9a0319fA33ED3"  # TreasuryVester contract address
-      abi: TreasuryVester
-      startBlock: 6880809  # Replace with the actual deployment block
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - TreasuryVester
-        - TokensVestedEvent
-      abis:
-        - name: TreasuryVester
-          file: ../../src/blockchain/abis/dex/treasuryVesterABI.json
-        - name: ERC20
-          file: ../../src/blockchain/abis/dex/erc20ABI.json
-      eventHandlers:
-        - event: TokensVested(uint256,address)
-          handler: handleTokensVested
-        - event: VestingEnabled()
-          handler: handleVestingEnabled
-        - event: RecipientChanged(address)
-          handler: handleRecipientChanged
-      file: ./src/treasury-vester.ts
-
-
 
 templates:
   - kind: ethereum
-    name: Pair
+    name: KalyswapPair
     network: kalychain
     source:
-      abi: Pair
+      abi: KalyswapPair
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -166,29 +43,26 @@ templates:
       entities:
         - Pair
         - Token
-        - Transaction
+        - Swap
         - Mint
         - Burn
-        - Swap
-        - Bundle
-        - KalyswapFactory
-        - User
+        - SyncEvent
       abis:
-        - name: Pair
+        - name: KalyswapPair
           file: ../../src/blockchain/abis/dex/pairABI.json
-        - name: Factory
+        - name: KalyswapFactory
           file: ../../src/blockchain/abis/dex/factoryABI.json
         - name: ERC20
           file: ../../src/blockchain/abis/dex/erc20ABI.json
       eventHandlers:
+        - event: Swap(indexed address,uint256,uint256,uint256,uint256,indexed address)
+          handler: handleSwap
         - event: Mint(indexed address,uint256,uint256)
           handler: handleMint
         - event: Burn(indexed address,uint256,uint256,indexed address)
           handler: handleBurn
-        - event: Swap(indexed address,uint256,uint256,uint256,uint256,indexed address)
-          handler: handleSwap
-        - event: Transfer(indexed address,indexed address,uint256)
-          handler: handleTransfer
         - event: Sync(uint112,uint112)
           handler: handleSync
-      file: ./src/core.ts
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+      file: ./src/pair.ts
