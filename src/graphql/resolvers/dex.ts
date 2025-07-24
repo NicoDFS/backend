@@ -58,7 +58,7 @@ export const dexResolvers = {
       return dexService.getStakingRewards();
     },
 
-    dexDayData: async (
+    kalyswapDayDatas: async (
       _: any,
       { first, skip }: { first?: number; skip?: number },
       { dexService }: Context
@@ -66,12 +66,22 @@ export const dexResolvers = {
       return dexService.getDexDayData(first, skip);
     },
 
-    pairDayData: async (
+    pairDayDatas: async (
       _: any,
-      { first, skip }: { first?: number; skip?: number },
+      { pairAddress, first, skip }: { pairAddress: string; first?: number; skip?: number },
       { dexService }: Context
     ) => {
-      return dexService.getPairDayData(first, skip);
+      // Validate pairAddress is provided
+      if (!pairAddress) {
+        throw new Error('pairAddress is required');
+      }
+
+      // Validate pairAddress format (should be a valid Ethereum address)
+      if (!/^0x[a-fA-F0-9]{40}$/.test(pairAddress)) {
+        throw new Error('Invalid pairAddress format');
+      }
+
+      return dexService.getPairDayData(pairAddress, first, skip);
     },
 
     router: async (_: any, __: any, { dexService }: Context) => {

@@ -1,10 +1,6 @@
 {
-  
+  "extends": "./node_modules/@graphprotocol/graph-ts/tsconfig.json",
   "compilerOptions": {
-    "lib": [
-      "es6",
-      "dom" 
-    ],
-   
+    "types": ["@graphprotocol/graph-ts"]
   }
 }

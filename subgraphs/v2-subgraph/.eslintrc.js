@@ -30,5 +30,5 @@ module.exports = {
       },
     ],
   },
-  ignorePatterns: ['generated/*'],
+  ignorePatterns: ['src/types/templates/*'],
 }

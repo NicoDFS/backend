@@ -36,7 +36,7 @@ export const DexService = {
   async getFactory() {
     const query = gql`
       query {
-        kalyswapFactory(id: "${FACTORY_ADDRESS.toLowerCase()}") {
+        KalyswapFactory(id: "${FACTORY_ADDRESS.toLowerCase()}") {
           id
           pairCount
           totalVolumeKLC
@@ -51,7 +51,7 @@ export const DexService = {
 
     try {
       const result = await dexClient.request(query);
-      const factory = (result as any).kalyswapFactory;
+      const factory = result.KalyswapFactory;
       
       if (!factory) {
         console.warn('Factory not found in subgraph');
@@ -81,7 +81,8 @@ export const DexService = {
           first: $first,
           skip: $skip,
           orderBy: $orderBy,
-          orderDirection: $orderDirection
+          orderDirection: $orderDirection,
+          where: { reserveUSD_gt: "1000" }
         ) {
           id
           token0 {
@@ -120,7 +121,7 @@ export const DexService = {
         orderDirection
       });
 
-      const pairs = (result as any).pairs || [];
+      const pairs = result.pairs || [];
       console.log(`Fetched ${pairs.length} pairs from v2-subgraph`);
       return pairs;
     } catch (error) {
@@ -171,7 +172,7 @@ export const DexService = {
 
     try {
       const result = await dexClient.request(query, { id: pairAddress.toLowerCase() });
-      return (result as any).pair;
+      return result.pair;
     } catch (error) {
       console.error(`Error fetching pair ${pairAddress}:`, error);
       return null;
@@ -204,7 +205,7 @@ export const DexService = {
 
     try {
       const result = await dexClient.request(query, { id: tokenAddress.toLowerCase() });
-      return (result as any).token;
+      return result.token;
     } catch (error) {
       console.error(`Error fetching token ${tokenAddress}:`, error);
       return null;
@@ -227,7 +228,7 @@ export const DexService = {
 
     try {
       const result = await dexClient.request(query);
-      return (result as any).bundle;
+      return result.bundle;
     } catch (error) {
       console.error('Error fetching bundle data:', error);
       return null;
@@ -264,7 +265,7 @@ export const DexService = {
 
     try {
       const result = await dexClient.request(query, { first, skip });
-      return (result as any).kalyswapDayDatas || [];
+      return result.kalyswapDayDatas || [];
     } catch (error) {
       console.error('Error fetching day data:', error);
       return [];
@@ -279,11 +280,6 @@ export const DexService = {
    * @returns Array of pair day data
    */
   async getPairDayData(pairAddress: string, first = 30, skip = 0) {
-    // Validate pairAddress parameter
-    if (!pairAddress || typeof pairAddress !== 'string') {
-      console.error('Invalid pairAddress parameter:', pairAddress);
-      return [];
-    }
     const query = gql`
       query getPairDayData($pairAddress: Bytes!, $first: Int!, $skip: Int!) {
         pairDayDatas(
@@ -314,7 +310,7 @@ export const DexService = {
         first,
         skip
       });
-      return (result as any).pairDayDatas || [];
+      return result.pairDayDatas || [];
     } catch (error) {
       console.error(`Error fetching pair day data for ${pairAddress}:`, error);
       return [];
@@ -713,79 +709,5 @@ export const DexService = {
       console.error(`Error searching pairs for "${searchTerm}":`, error);
       return [];
     }
-  },
-
-  // Legacy methods for backward compatibility with existing resolvers
-  async getTokens(first = 100, skip = 0, orderBy = 'tradeVolumeUSD', orderDirection = 'desc') {
-    return this.getTopTokens(first, orderBy);
-  },
-
-  async getLiquidityPoolManager() {
-    // Return basic info about the liquidity pool manager
-    return {
-      id: LIQUIDITY_POOL_MANAGER_ADDRESS.toLowerCase(),
-      address: LIQUIDITY_POOL_MANAGER_ADDRESS,
-      totalPools: 0,
-      totalStaked: '0'
-    };
-  },
-
-  async getWhitelistedPools() {
-    // Return empty array for now - this would need farming subgraph data
-    return [];
-  },
-
-  async getTreasuryVester() {
-    // Return basic info about the treasury vester
-    return {
-      id: TREASURY_VESTER_ADDRESS.toLowerCase(),
-      address: TREASURY_VESTER_ADDRESS,
-      totalVested: '0',
-      totalClaimed: '0'
-    };
-  },
-
-  async getTokensVestedEvents(first = 100, skip = 0) {
-    // Return empty array for now - this would need farming subgraph data
-    return [];
-  },
-
-  async getDexStakingPool() {
-    // Return basic info about the staking pool
-    return {
-      id: STAKING_REWARDS_ADDRESS.toLowerCase(),
-      address: STAKING_REWARDS_ADDRESS,
-      totalStaked: '0',
-      rewardRate: '0'
-    };
-  },
-
-  async getRouter() {
-    // Return basic info about the router
-    return {
-      id: ROUTER_ADDRESS.toLowerCase(),
-      address: ROUTER_ADDRESS,
-      factory: FACTORY_ADDRESS.toLowerCase()
-    };
-  },
-
-  async getStakingRewards() {
-    // Alias for getDexStakingPool
-    return this.getDexStakingPool();
-  },
-
-  async getRouterSwaps(first = 100, skip = 0) {
-    // Alias for getSwaps
-    return this.getSwaps(first, skip);
-  },
-
-  async getLPStakingData() {
-    // Return empty data for now - this would need farming subgraph data
-    return {
-      totalStaked: '0',
-      totalRewards: '0',
-      activePools: 0,
-      pools: []
-    };
   }
 };

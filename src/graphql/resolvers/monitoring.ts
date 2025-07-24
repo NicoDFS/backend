@@ -3,7 +3,7 @@ import { ChainType } from '../../services/monitoring/prometheus';
 
 // Helper function to validate chain parameter
 function validateChain(chain: string): ChainType {
-  const validChains: ChainType[] = ['kalychain', 'bnb', 'arbitrum', 'polygon'];
+  const validChains: ChainType[] = ['kalychain', 'bnb', 'arbitrum', 'polygon', 'clisha'];
   if (!validChains.includes(chain as ChainType)) {
     throw new Error(`Invalid chain: ${chain}. Valid chains are: ${validChains.join(', ')}`);
   }
@@ -26,7 +26,8 @@ export const monitoringResolvers = {
         kalychain: { health: health.kalychain, resources: {}, metrics: {} },
         bnb: { health: health.bnb, resources: {}, metrics: {} },
         arbitrum: { health: health.arbitrum, resources: {}, metrics: {} },
-        polygon: { health: health.polygon, resources: {}, metrics: {} }
+        polygon: { health: health.polygon, resources: {}, metrics: {} },
+        clisha: { health: health.clisha, resources: {}, metrics: {} }
       };
     },
 
@@ -44,7 +45,8 @@ export const monitoringResolvers = {
         kalychain: { health: {}, resources: resources.kalychain, metrics: {} },
         bnb: { health: {}, resources: resources.bnb, metrics: {} },
         arbitrum: { health: {}, resources: resources.arbitrum, metrics: {} },
-        polygon: { health: {}, resources: resources.polygon, metrics: {} }
+        polygon: { health: {}, resources: resources.polygon, metrics: {} },
+        clisha: { health: {}, resources: resources.clisha, metrics: {} }
       };
     },
 
@@ -62,7 +64,8 @@ export const monitoringResolvers = {
         kalychain: { health: {}, resources: {}, metrics: metrics.kalychain },
         bnb: { health: {}, resources: {}, metrics: metrics.bnb },
         arbitrum: { health: {}, resources: {}, metrics: metrics.arbitrum },
-        polygon: { health: {}, resources: {}, metrics: metrics.polygon }
+        polygon: { health: {}, resources: {}, metrics: metrics.polygon },
+        clisha: { health: {}, resources: {}, metrics: metrics.clisha }
       };
     },
 

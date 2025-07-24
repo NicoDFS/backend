@@ -126,10 +126,12 @@ const typeDefs = gql`
   type DayData {
     id: ID!
     date: Int!
-    volumeUSD: String!
-    volumeKLC: String!
-    liquidityUSD: String!
-    liquidityKLC: String!
+    dailyVolumeUSD: String!
+    dailyVolumeKLC: String!
+    totalVolumeUSD: String!
+    totalVolumeKLC: String!
+    totalLiquidityUSD: String!
+    totalLiquidityKLC: String!
     txCount: String!
   }
 
@@ -507,6 +509,7 @@ const typeDefs = gql`
     bnb: NodeMonitoring!
     arbitrum: NodeMonitoring!
     polygon: NodeMonitoring!
+    clisha: NodeMonitoring!
   }
 
   type FullMonitoringData {
@@ -727,8 +730,8 @@ const typeDefs = gql`
     treasuryVester: TreasuryVester
     tokensVestedEvents(first: Int, skip: Int): [TokensVestedEvent!]!
     dexStakingPool: DexStakingPool
-    dexDayData(first: Int, skip: Int): [DayData!]!
-    pairDayData(first: Int, skip: Int): [PairDayData!]!
+    kalyswapDayDatas(first: Int, skip: Int): [DayData!]!
+    pairDayDatas(pairAddress: String!, first: Int, skip: Int): [PairDayData!]!
     router: Router
     routerSwaps(first: Int, skip: Int): [RouterSwap!]!
     lpStakingData: LPStakingData!

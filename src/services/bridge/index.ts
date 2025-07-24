@@ -25,7 +25,8 @@ const chainIdToName: Record<string, string> = {
   '56': 'bsc',
   '137': 'polygon',
   '42161': 'arbitrum',
-  '3888': 'kalychain'
+  '3888': 'kalychain',
+  '3890': 'clisha'
 };
 
 // Map of token addresses to known symbols and names
@@ -41,6 +42,7 @@ const tokenAddressToInfo: Record<string, { symbol: string, name: string, decimal
   '0x9c3c9283d3e44854697cd22d3faa240cfb032889': { symbol: 'POL', name: 'Polygon', decimals: 18 },
   '0x0000000000000000000000000000000000001010': { symbol: 'POL', name: 'Polygon', decimals: 18 },
   '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0': { symbol: 'POL', name: 'Polygon', decimals: 18 },
+  '0x376E0ac0B55aA79F9B30aAc8842e5E84fF06360C': { symbol: 'CLISHA', name: 'Clisha Coin', decimals: 18},
 
   // Stablecoins
   '0x9cAb0c396cF0F4325913f2269a0b72BD4d46E3A9': { symbol: 'USDC', name: 'USD Coin', decimals: 6 },
@@ -834,6 +836,7 @@ export const BridgeService = {
     }
   },
 
+  // TODO: Note to self: This dose not have all the pairs
   // Get warp routes from the actual configuration
   async getWarpRoutes() {
     // Return actual warp routes based on the frontend configuration
@@ -876,6 +879,14 @@ export const BridgeService = {
         destinationChain: 'polygon',
         tokenAddress: '0x2CA775C77B922A51FcF3097F52bFFdbc0250D99A',
         tokenSymbol: 'USDT',
+        status: 'active'
+      },
+      {
+        id: 'clisha-route',
+        sourceChain: 'clisha',
+        destinationChain: 'kalychain',
+        tokenAddress: '0x376E0ac0B55aA79F9B30aAc8842e5E84fF06360C',
+        tokenSymbol: 'CLISHA',
         status: 'active'
       }
     ];

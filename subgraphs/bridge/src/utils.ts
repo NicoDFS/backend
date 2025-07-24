@@ -85,6 +85,8 @@ export function getDomainFromChainId(chainId: BigInt): BigInt {
     return BigInt.fromI32(137); // Polygon
   } else if (chainId.equals(BigInt.fromI32(42161))) {
     return BigInt.fromI32(42161); // Arbitrum
+  } else if (chainId.equals(BigInt.fromI32(3890))) {
+    return BigInt.fromI32(3890); // Clisha
   }
   
   return chainId; // Default to chainId if no mapping exists
