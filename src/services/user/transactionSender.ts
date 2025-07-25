@@ -3,7 +3,7 @@ import { getProvider } from '../../blockchain/providers';
 import KalyWalletGenerator, { EncryptedWallet } from './walletGenerator';
 import { walletService } from './walletService';
 import { transactionService } from './transactionService';
-import { TransactionStatus } from '../../models/User';
+import { TransactionStatus } from '@prisma/client';
 
 // ERC20 ABI for token transfers
 const ERC20_ABI = [
