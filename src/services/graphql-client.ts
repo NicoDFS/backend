@@ -9,6 +9,7 @@ const subgraphEndpoints: Record<string, string> = {
   bridge: `${GRAPH_NODE_URL}/subgraphs/name/kalyswap/bridge-subgraph`,
   launchpad: `${GRAPH_NODE_URL}/subgraphs/name/kalyswap/launchpad-subgraph`,
   staking: `${GRAPH_NODE_URL}/subgraphs/name/kalyswap/staking-subgraph`,
+  farm: `${GRAPH_NODE_URL}/subgraphs/name/kalyswap/farming-subgraph`,
 };
 
 // Cache clients to avoid creating new ones for each request

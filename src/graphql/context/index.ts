@@ -8,12 +8,14 @@ import { userService } from '../../services/user/userService';
 import { walletService } from '../../services/user/walletService';
 import { apiKeyService, ApiKey, ApiKeyPermissions } from '../../services/auth/apiKeyService';
 import { ProjectService } from '../../services/project';
+import { FarmService } from '../../services/farm';
 
 export type Context = {
   dexService: typeof DexService;
   bridgeService: typeof BridgeService;
   launchpadService: typeof LaunchpadService;
   stakingService: typeof StakingService;
+  farmService: typeof FarmService;
   monitoringService: typeof MonitoringService;
   hyperlaneApiService: typeof HyperlaneApiService;
   userService: typeof userService;
@@ -33,6 +35,7 @@ export async function createContext({ req }: { req?: any } = {}): Promise<Contex
     bridgeService: BridgeService,
     launchpadService: LaunchpadService,
     stakingService: StakingService,
+    farmService: FarmService,
     monitoringService: MonitoringService,
     hyperlaneApiService: HyperlaneApiService,
     userService,

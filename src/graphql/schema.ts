@@ -9,6 +9,7 @@ import { userResolvers } from './resolvers/user';
 import { apiKeyResolvers } from './resolvers/apiKey';
 import { projectResolvers } from './resolvers/project';
 import { fairlaunchResolvers } from './resolvers/fairlaunch';
+import { farmResolvers } from './resolvers/farm';
 
 const typeDefs = gql`
   type Token {
@@ -260,6 +261,39 @@ const typeDefs = gql`
     vestingEnabled: Boolean!
     createdAt: String!
     updatedAt: String!
+  }
+
+  # Farm-specific types for the farm subgraph
+  type FarmingPool {
+    id: ID!
+    address: String!
+    stakingToken: String!
+    rewardsToken: String!
+    totalStaked: String!
+    rewardRate: String!
+    rewardsDuration: String!
+    periodFinish: String!
+    lastUpdateTime: String!
+    rewardPerTokenStored: String!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type FarmingData {
+    farmingPools: [FarmingPool!]!
+    whitelistedPools: [WhitelistedPool!]!
+    userFarms: [Farmer!]!
+  }
+
+  type Farmer {
+    id: ID!
+    address: String!
+    pool: FarmingPool!
+    stakedAmount: String!
+    rewards: String!
+    rewardPerTokenPaid: String!
+    lastAction: String!
+    lastActionTimestamp: String!
   }
 
   type TokensVestedEvent {
@@ -775,6 +809,11 @@ const typeDefs = gql`
     stakingContractData: StakingPool
     userStakingContractData(userAddress: String!): StakingUser
 
+    # Farm queries (from farm subgraph)
+    farmingPools: [FarmingPool!]!
+    userFarmingData(userAddress: String!): [Farmer!]!
+    farmingData(userAddress: String): FarmingData!
+
     # Monitoring queries
     relayerHealth: NodeHealth!
     validatorHealth(chain: String!): NodeHealth!
@@ -870,6 +909,7 @@ export const schema = makeExecutableSchema({
     bridgeResolvers,
     launchpadResolvers,
     stakingResolvers,
+    farmResolvers,
     monitoringResolvers,
     userResolvers,
     apiKeyResolvers,
