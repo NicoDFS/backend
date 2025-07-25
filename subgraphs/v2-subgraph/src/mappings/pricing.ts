@@ -11,29 +11,29 @@ const USDT_WKLC_PAIR = '0x25FDDaF836d12dC5e285823a644bb86E0b79c8e2' // created b
 
 export function getKlcPriceInUSD(): BigDecimal {
   // fetch klc prices for each stablecoin
-  let daiPair = Pair.load(DAI_WKLC_PAIR) // dai is token0
-  let usdcPair = Pair.load(USDC_WKLC_PAIR) // usdc is token0
-  let usdtPair = Pair.load(USDT_WKLC_PAIR) // usdt is token1
+  let daiPair = Pair.load(DAI_WKLC_PAIR) // WKLC is token0, DAI is token1
+  let usdcPair = Pair.load(USDC_WKLC_PAIR) // WKLC is token0, USDC is token1
+  let usdtPair = Pair.load(USDT_WKLC_PAIR) // WKLC is token0, USDT is token1
 
   // all 3 have been created
   if (daiPair !== null && usdcPair !== null && usdtPair !== null) {
-    let totalLiquidityKLC = daiPair.reserve1.plus(usdcPair.reserve1).plus(usdtPair.reserve0)
-    let daiWeight = daiPair.reserve1.div(totalLiquidityKLC)
-    let usdcWeight = usdcPair.reserve1.div(totalLiquidityKLC)
+    let totalLiquidityKLC = daiPair.reserve0.plus(usdcPair.reserve0).plus(usdtPair.reserve0)
+    let daiWeight = daiPair.reserve0.div(totalLiquidityKLC)
+    let usdcWeight = usdcPair.reserve0.div(totalLiquidityKLC)
     let usdtWeight = usdtPair.reserve0.div(totalLiquidityKLC)
-    return daiPair.token0Price
+    return daiPair.token1Price
       .times(daiWeight)
-      .plus(usdcPair.token0Price.times(usdcWeight))
+      .plus(usdcPair.token1Price.times(usdcWeight))
       .plus(usdtPair.token1Price.times(usdtWeight))
     // dai and USDC have been created
   } else if (daiPair !== null && usdcPair !== null) {
-    let totalLiquidityKLC = daiPair.reserve1.plus(usdcPair.reserve1)
-    let daiWeight = daiPair.reserve1.div(totalLiquidityKLC)
-    let usdcWeight = usdcPair.reserve1.div(totalLiquidityKLC)
-    return daiPair.token0Price.times(daiWeight).plus(usdcPair.token0Price.times(usdcWeight))
+    let totalLiquidityKLC = daiPair.reserve0.plus(usdcPair.reserve0)
+    let daiWeight = daiPair.reserve0.div(totalLiquidityKLC)
+    let usdcWeight = usdcPair.reserve0.div(totalLiquidityKLC)
+    return daiPair.token1Price.times(daiWeight).plus(usdcPair.token1Price.times(usdcWeight))
     // USDC is the only pair so far
   } else if (usdcPair !== null) {
-    return usdcPair.token0Price
+    return usdcPair.token1Price
   } else {
     return ZERO_BD
   }
