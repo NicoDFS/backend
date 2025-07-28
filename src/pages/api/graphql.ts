@@ -4,7 +4,17 @@ import { schema } from '../../graphql/schema';
 import { createContext } from '../../graphql/context';
 import Cors from 'micro-cors';
 
-const cors = Cors();
+const cors = Cors({
+  allowCredentials: true,
+  allowHeaders: ['Content-Type', 'Authorization'],
+  allowMethods: ['GET', 'POST', 'OPTIONS'],
+  origin: [
+    'http://localhost:3002',
+    'http://localhost:3000',
+    'https://app.kalyswap.io',
+    'https://kalyswap.io'
+  ]
+});
 
 const apolloServer = new ApolloServer({
   schema,
