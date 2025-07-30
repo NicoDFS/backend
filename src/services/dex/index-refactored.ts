@@ -82,7 +82,7 @@ export const DexService = {
           skip: $skip,
           orderBy: $orderBy,
           orderDirection: $orderDirection,
-          where: { reserveUSD_gt: "1000" }
+          where: { reserveUSD_gt: "0" }
         ) {
           id
           token0 {
