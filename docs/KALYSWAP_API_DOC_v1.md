@@ -7,9 +7,20 @@ This document provides comprehensive API documentation for mobile developers to 
 ## Base URL
 
 ```
-Production: https://kalyswap.io/api/graphql
+Production: https://app.kalyswap.io/api/graphql
 Development: http://localhost:3000/api/graphql
 ```
+
+## Subgraph Endpoints
+
+For direct subgraph access (without GraphiQL interface):
+
+```
+DEX Subgraph: https://app.kalyswap.io/subgraphs/name/kalyswap/dex-subgraph
+Farming Subgraph: https://app.kalyswap.io/subgraphs/name/kalyswap/farming-subgraph
+```
+
+**Note**: These endpoints accept POST requests with GraphQL queries in the request body.
 
 ## Authentication
 
@@ -434,7 +445,7 @@ Here's a complete example of how to integrate with the API:
 
 ```javascript
 // 1. User Login
-const loginResponse = await fetch('http://localhost:3000/api/graphql', {
+const loginResponse = await fetch('https://app.kalyswap.io/api/graphql', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -455,7 +466,7 @@ const { token, user } = loginResponse.data.login;
 await SecureStorage.setItem('jwt_token', token);
 
 // 3. Make authenticated requests
-const userDataResponse = await fetch('http://localhost:3000/api/graphql', {
+const userDataResponse = await fetch('https://app.kalyswap.io/api/graphql', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -476,7 +487,7 @@ const userDataResponse = await fetch('http://localhost:3000/api/graphql', {
 });
 
 // 4. Access public data (no authentication required)
-const dexDataResponse = await fetch('http://localhost:3000/api/graphql', {
+const dexDataResponse = await fetch('https://app.kalyswap.io/api/graphql', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({

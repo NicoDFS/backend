@@ -23,7 +23,6 @@ const chainIdToName: Record<string, string> = {
   '0': 'unknown',
   '1': 'ethereum',
   '56': 'bsc',
-  '137': 'polygon',
   '42161': 'arbitrum',
   '3888': 'kalychain',
   '3890': 'clisha'

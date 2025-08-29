@@ -129,10 +129,14 @@ export class WalletService implements IWalletService {
 
       // Get token balances from KalyScan API
       const tokens = await this.getTokenBalancesFromAPI(address);
+      console.log(`Got ${tokens.length} tokens from API, filtering for non-zero balances...`);
+
+      const nonZeroTokens = tokens.filter(t => parseFloat(t.balance) > 0);
+      console.log(`Returning ${nonZeroTokens.length} tokens with non-zero balance`);
 
       return {
         klc: klcBalanceFormatted,
-        tokens: tokens.filter(t => parseFloat(t.balance) > 0) // Only return tokens with non-zero balance
+        tokens: nonZeroTokens
       };
     } catch (error) {
       console.error('Error fetching wallet balance:', error);
@@ -164,6 +168,9 @@ export class WalletService implements IWalletService {
       }
 
       // Process tokens from API
+      console.log(`Processing ${data.items.length} items from KalyScan API for address ${address}`);
+      console.log('Sample API response item:', JSON.stringify(data.items[0], null, 2));
+
       const tokens = data.items
         .filter((item: any) => item.token && item.token.type === 'ERC-20') // Only ERC-20 tokens
         .map((item: any) => {
@@ -174,13 +181,33 @@ export class WalletService implements IWalletService {
           // Format balance using ethers
           const formattedBalance = ethers.utils.formatUnits(balance, decimals);
 
+          // Use address_hash instead of address based on API response structure
+          const tokenAddress = token.address_hash || token.address || '';
+          console.log(`Processing token: ${token.symbol}, address: "${tokenAddress}", balance: ${formattedBalance}`);
+
           return {
             symbol: token.symbol || 'UNKNOWN',
             balance: formattedBalance,
-            address: token.address || ''
+            address: tokenAddress
           };
+        })
+        .filter((token: any) => {
+          // Filter out tokens with invalid addresses
+          const address = token.address;
+          const isValid = address &&
+                         typeof address === 'string' &&
+                         address.trim() !== '' &&
+                         address.length >= 40 && // Minimum length for Ethereum address
+                         address.startsWith('0x');
+
+          if (!isValid) {
+            console.log(`Filtering out invalid token: ${token.symbol} with address: "${address}"`);
+          }
+
+          return isValid;
         });
 
+      console.log(`Returning ${tokens.length} valid tokens after filtering`);
       return tokens;
     } catch (error) {
       console.error('Error fetching tokens from KalyScan API:', error);
@@ -195,6 +222,7 @@ export class WalletService implements IWalletService {
    * @returns Array of token balances
    */
   private async getTokenBalancesFromHardcodedList(address: string): Promise<{ symbol: string; balance: string; address: string; }[]> {
+    console.log(`Using fallback hardcoded token list for address ${address}`);
     const tokens = await Promise.all(
       Object.entries(TOKEN_ADDRESSES).map(async ([symbol, tokenAddress]) => {
         try {

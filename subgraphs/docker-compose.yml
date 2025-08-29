@@ -17,7 +17,7 @@ services:
       postgres_pass: let-me-in
       postgres_db: graph-node
       ipfs: 'ipfs:5001'
-      ethereum: 'kalychain:https://rpc.kalychain.io/rpc'
+      ethereum: 'kalychain:https://rpc3.kalychain.io/rpc'
       GRAPH_LOG: info
       GRAPH_ALLOW_NON_DETERMINISTIC_IPFS: 'true'
       GRAPH_ETHEREUM_GENESIS_BLOCK_NUMBER: '6880000'
