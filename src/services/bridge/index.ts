@@ -143,8 +143,7 @@ const getKLCPriceFromDex = async (): Promise<number> => {
 
     console.log(`KLC price in USD from DEX: $${klcPriceInUSD}`);
 
-    // Sanity check - KLC price should be very small (around $0.001)
-    // If it's too high or too low, use the fallback price
+    // Sanity check - KLC price should be reasonable
     const MIN_REASONABLE_PRICE = 0.0001;  // $0.0001
     const MAX_REASONABLE_PRICE = 0.01;    // $0.01
 
@@ -154,15 +153,14 @@ const getKLCPriceFromDex = async (): Promise<number> => {
         klcPriceInUSD < MIN_REASONABLE_PRICE ||
         klcPriceInUSD > MAX_REASONABLE_PRICE) {
 
-      console.log(`KLC price from DEX (${klcPriceInUSD}) is outside reasonable range or invalid`);
-      klcPriceInUSD = 0.001221; // Current price from CoinGecko
-      console.log(`Using fallback KLC price: $${klcPriceInUSD}`);
+      console.log(`KLC price from DEX (${klcPriceInUSD}) is outside reasonable range or invalid - cannot provide price without market data`);
+      klcPriceInUSD = 0; // Do not use hardcoded price
     }
 
     return klcPriceInUSD;
   } catch (error) {
     console.error('Error fetching KLC price from DEX:', error);
-    return 0.001221; // Fallback to current price
+    return 0; // Do not use hardcoded fallback price
   }
 };
 
@@ -205,9 +203,9 @@ const getTokenPrices = async (): Promise<Record<string, number>> => {
     if (klcPrice > 0) {
       console.log(`Using KLC price from DEX: $${klcPrice}`);
       prices['KLC'] = klcPrice;
-    } else if (!prices['KLC']) {
-      // If KLC price is not available from either source, use fallback
-      prices['KLC'] = 0.001221;
+    } else {
+      console.warn('KLC price not available from DEX - cannot provide KLC price without market data');
+      // Do not set KLC price if no market data available
     }
 
     // Add stablecoins with fixed prices
@@ -235,17 +233,13 @@ const getTokenPrices = async (): Promise<Record<string, number>> => {
       return tokenPriceCache;
     }
 
-    // Fallback prices if API call fails
-    console.log('Using fallback token prices after error');
+    // Fallback prices if API call fails - only stablecoins
+    console.log('Using fallback prices after error - only stablecoins available');
     const fallbackPrices = {
-      'KLC': 0.001221, // Updated to current price
-      'ETH': 3000,
-      'BNB': 500,
-      'POL': 0.5,
-      'WBTC': 60000,
       'USDC': 1,
       'USDT': 1,
       'DAI': 1
+      // No hardcoded prices for volatile tokens like KLC, ETH, BNB, etc.
     };
 
     // Update cache

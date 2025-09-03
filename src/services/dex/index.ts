@@ -569,14 +569,29 @@ export const DexService = {
       const volume24h = dayData?.[0]?.dailyVolumeUSD || '0';
 
       return {
-        totalLiquidityUSD,
-        totalVolumeUSD,
-        volume24h,
-        pairCount,
-        txCount,
-        klcPrice,
-        pairs: pairs.slice(0, 10), // Top 10 pairs
-        dayData: dayData.slice(0, 7) // Last 7 days
+        factory: factory || {
+          id: '1',
+          pairCount: 0,
+          totalVolumeKLC: '0',
+          totalLiquidityKLC: '0',
+          totalVolumeUSD: '0',
+          untrackedVolumeUSD: '0',
+          totalLiquidityUSD: '0',
+          txCount: '0'
+        },
+        dayData: dayData?.[0] || {
+          id: '1',
+          date: Math.floor(Date.now() / 1000),
+          dailyVolumeUSD: '0',
+          dailyVolumeKLC: '0',
+          totalVolumeUSD: '0',
+          totalVolumeKLC: '0',
+          totalLiquidityUSD: '0',
+          totalLiquidityKLC: '0',
+          txCount: '0'
+        },
+        topPairs: pairs.slice(0, 10),
+        klcPrice: parseFloat(klcPrice) || 0
       };
     } catch (error) {
       console.error('Error fetching DEX overview:', error);

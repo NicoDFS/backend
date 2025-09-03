@@ -1,4 +1,5 @@
 import { Context } from '../context';
+import { volumeService } from '../../services/dex/volumeService';
 
 export const dexResolvers = {
   Query: {
@@ -106,6 +107,41 @@ export const dexResolvers = {
       { dexService }: Context
     ) => {
       return dexService.getSwaps(first, skip, userAddress);
+    },
+
+    // 24hr Volume Queries
+    pair24hrVolume: async (_: any, {
+      pairAddress,
+      klcPriceUSD,
+      token0Symbol,
+      token1Symbol
+    }: {
+      pairAddress: string;
+      klcPriceUSD: number;
+      token0Symbol?: string;
+      token1Symbol?: string;
+    }) => {
+      return volumeService.getPair24hrVolume(pairAddress, klcPriceUSD, token0Symbol, token1Symbol);
+    },
+
+    multiplePairs24hrVolume: async (_: any, {
+      pairs,
+      klcPriceUSD
+    }: {
+      pairs: Array<{ address: string; token0Symbol: string; token1Symbol: string }>;
+      klcPriceUSD: number;
+    }) => {
+      return volumeService.getMultiplePairs24hrVolume(pairs, klcPriceUSD);
+    },
+
+    total24hrVolume: async (_: any, {
+      pairs,
+      klcPriceUSD
+    }: {
+      pairs: Array<{ address: string; token0Symbol: string; token1Symbol: string }>;
+      klcPriceUSD: number;
+    }) => {
+      return volumeService.getTotal24hrVolume(pairs, klcPriceUSD);
     }
   }
 };

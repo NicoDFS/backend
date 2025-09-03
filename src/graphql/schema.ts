@@ -326,6 +326,30 @@ const typeDefs = gql`
     klcPrice: Float
   }
 
+  # 24hr Volume Types
+  type PairVolumeData {
+    pairAddress: String!
+    token0Address: String!
+    token1Address: String!
+    token0Symbol: String!
+    token1Symbol: String!
+    volume24hrToken0: String!
+    volume24hrToken1: String!
+    volume24hrUSD: String!
+    swapCount: Int!
+  }
+
+  type Total24hrVolume {
+    totalVolumeUSD: String!
+    totalSwaps: Int!
+  }
+
+  input PairInput {
+    address: String!
+    token0Symbol: String!
+    token1Symbol: String!
+  }
+
   type Bridge {
     id: ID!
     sourceChain: String!
@@ -770,6 +794,11 @@ const typeDefs = gql`
     routerSwaps(first: Int, skip: Int): [RouterSwap!]!
     lpStakingData: LPStakingData!
     swaps(first: Int, skip: Int, userAddress: String): [Swap!]!
+
+    # 24hr Volume queries
+    pair24hrVolume(pairAddress: String!, klcPriceUSD: Float!, token0Symbol: String, token1Symbol: String): PairVolumeData!
+    multiplePairs24hrVolume(pairs: [PairInput!]!, klcPriceUSD: Float!): [PairVolumeData!]!
+    total24hrVolume(pairs: [PairInput!]!, klcPriceUSD: Float!): Total24hrVolume!
 
     # Bridge queries
     bridges(limit: Int, skip: Int): [Bridge!]!

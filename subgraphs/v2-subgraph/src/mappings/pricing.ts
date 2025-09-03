@@ -54,10 +54,10 @@ let WHITELIST: string[] = [
 ]
 
 // minimum liquidity required to count towards tracked volume for pairs with small # of Lps
-let MINIMUM_USD_THRESHOLD_NEW_PAIRS = BigDecimal.fromString('400000')
+let MINIMUM_USD_THRESHOLD_NEW_PAIRS = BigDecimal.fromString('100') // Lowered from 400000 to 100 for development
 
 // minimum liquidity for price to get tracked
-let MINIMUM_LIQUIDITY_THRESHOLD_KLC = BigDecimal.fromString('2')
+let MINIMUM_LIQUIDITY_THRESHOLD_KLC = BigDecimal.fromString('0.1') // Lowered from 2 to 0.1 for development
 
 /**
  * Search through graph to find derived Klc per token.
