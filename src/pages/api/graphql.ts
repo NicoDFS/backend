@@ -8,6 +8,45 @@ const apolloServer = new ApolloServer({
   context: createContext,
   plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
   cors: false, // Disable Apollo Server's built-in CORS
+  // Enhanced error formatting to ensure proper JSON responses
+  formatError: (error) => {
+    // Log the error for debugging
+    console.error('GraphQL Error:', {
+      message: error.message,
+      path: error.path,
+      locations: error.locations,
+      extensions: error.extensions,
+    });
+
+    // Return a properly formatted GraphQL error
+    return {
+      message: error.message,
+      locations: error.locations,
+      path: error.path,
+      extensions: {
+        code: error.extensions?.code || 'INTERNAL_ERROR',
+        timestamp: new Date().toISOString(),
+      },
+    };
+  },
+  // Enhanced error response handling
+  formatResponse: (response, requestContext) => {
+    // Ensure we always return valid JSON
+    if (response.errors) {
+      // Log authentication errors specifically
+      const authErrors = response.errors.filter(error =>
+        error.message.includes('Authentication required') ||
+        error.message.includes('Invalid token') ||
+        error.message.includes('Token expired')
+      );
+
+      if (authErrors.length > 0) {
+        console.warn('Authentication error detected:', authErrors.map(e => e.message));
+      }
+    }
+
+    return response;
+  },
 });
 
 const startServer = apolloServer.start();
