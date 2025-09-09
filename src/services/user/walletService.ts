@@ -335,12 +335,19 @@ export class WalletService implements IWalletService {
     timestamp: string;
   }[]> {
     try {
+      // Try with simplified API call first
       const response = await fetch(
-        `https://kalyscan.io/api/v2/addresses/${address}/transactions?filter=to%20%7C%20from`
+        `https://kalyscan.io/api/v2/addresses/${address}/transactions`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'KalySwap/1.0'
+          }
+        }
       );
 
       if (!response.ok) {
-        console.warn('KalyScan API request failed for transactions');
+        console.warn(`KalyScan API request failed for transactions with status ${response.status}`);
         return [];
       }
 

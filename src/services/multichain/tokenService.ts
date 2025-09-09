@@ -30,9 +30,26 @@ export interface TokenBalance {
  */
 export class MultichainTokenService {
   private chainTokens: Map<number, TokenInfo[]> = new Map();
+  private apiCallTimestamps = new Map<string, number>();
+  private readonly API_RATE_LIMIT = 2000; // 2 seconds between API calls per endpoint
 
   constructor() {
     this.initializeTokenLists();
+  }
+
+  /**
+   * Check if we can make an API call (rate limiting)
+   */
+  private canMakeApiCall(endpoint: string): boolean {
+    const lastCall = this.apiCallTimestamps.get(endpoint);
+    const now = Date.now();
+
+    if (!lastCall || (now - lastCall) >= this.API_RATE_LIMIT) {
+      this.apiCallTimestamps.set(endpoint, now);
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -302,8 +319,21 @@ export class MultichainTokenService {
    */
   private async getKalyChainTokensFromAPI(address: string): Promise<TokenBalance[]> {
     try {
+      // Check rate limiting
+      const endpoint = 'kalyscan-tokens';
+      if (!this.canMakeApiCall(endpoint)) {
+        console.warn('KalyScan API rate limited, falling back to predefined tokens');
+        return this.getTokensFromPredefinedList(3888, address);
+      }
+
       const response = await fetch(
-        `https://kalyscan.io/api/v2/addresses/${address}/tokens?type=ERC-20%2CERC-721%2CERC-1155`
+        `https://kalyscan.io/api/v2/addresses/${address}/tokens?type=ERC-20%2CERC-721%2CERC-1155`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'KalySwap/1.0'
+          }
+        }
       );
 
       if (!response.ok) {
@@ -364,20 +394,33 @@ export class MultichainTokenService {
    */
   private async getBSCTokensFromAPI(address: string): Promise<TokenBalance[]> {
     try {
-      // BSCScan API endpoint for token balances
+      // Check rate limiting
+      const endpoint = 'bscscan-tokenlist';
+      if (!this.canMakeApiCall(endpoint)) {
+        console.warn('BSCScan API rate limited, falling back to predefined tokens');
+        return this.getTokensFromPredefinedList(56, address);
+      }
+
+      // BSCScan API endpoint for token balances (using free tier without API key)
       const response = await fetch(
-        `https://api.bscscan.com/api?module=account&action=tokenlist&address=${address}&apikey=YourApiKeyToken`
+        `https://api.bscscan.com/api?module=account&action=tokenlist&address=${address}`,
+        {
+          headers: {
+            'User-Agent': 'KalySwap/1.0'
+          }
+        }
       );
 
       if (!response.ok) {
-        console.warn('BSCScan API request failed, falling back to predefined tokens');
+        console.warn(`BSCScan API request failed with status ${response.status}, falling back to predefined tokens`);
         return this.getTokensFromPredefinedList(56, address);
       }
 
       const data = await response.json();
 
+      // BSCScan returns status '0' for errors, '1' for success
       if (data.status !== '1' || !data.result || !Array.isArray(data.result)) {
-        console.warn('Invalid BSCScan API response, falling back to predefined tokens');
+        console.warn(`Invalid BSCScan API response: ${data.message || 'Unknown error'}, falling back to predefined tokens`);
         return this.getTokensFromPredefinedList(56, address);
       }
 
@@ -411,20 +454,33 @@ export class MultichainTokenService {
    */
   private async getArbitrumTokensFromAPI(address: string): Promise<TokenBalance[]> {
     try {
-      // Arbiscan API endpoint for token balances
+      // Check rate limiting
+      const endpoint = 'arbiscan-tokenlist';
+      if (!this.canMakeApiCall(endpoint)) {
+        console.warn('Arbiscan API rate limited, falling back to predefined tokens');
+        return this.getTokensFromPredefinedList(42161, address);
+      }
+
+      // Arbiscan API endpoint for token balances (using free tier without API key)
       const response = await fetch(
-        `https://api.arbiscan.io/api?module=account&action=tokenlist&address=${address}&apikey=YourApiKeyToken`
+        `https://api.arbiscan.io/api?module=account&action=tokenlist&address=${address}`,
+        {
+          headers: {
+            'User-Agent': 'KalySwap/1.0'
+          }
+        }
       );
 
       if (!response.ok) {
-        console.warn('Arbiscan API request failed, falling back to predefined tokens');
+        console.warn(`Arbiscan API request failed with status ${response.status}, falling back to predefined tokens`);
         return this.getTokensFromPredefinedList(42161, address);
       }
 
       const data = await response.json();
 
+      // Arbiscan returns status '0' for errors, '1' for success
       if (data.status !== '1' || !data.result || !Array.isArray(data.result)) {
-        console.warn('Invalid Arbiscan API response, falling back to predefined tokens');
+        console.warn(`Invalid Arbiscan API response: ${data.message || 'Unknown error'}, falling back to predefined tokens`);
         return this.getTokensFromPredefinedList(42161, address);
       }
 
