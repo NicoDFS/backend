@@ -403,22 +403,20 @@ export class MultichainTokenService {
 
       // Get API key from environment
       const apiKey = process.env.BSCSCAN_API_KEY;
-      console.log('BSCScan API Key loaded:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NOT FOUND');
-
       if (!apiKey) {
         console.warn('BSCSCAN_API_KEY not found in environment, falling back to predefined tokens');
         return this.getTokensFromPredefinedList(56, address);
       }
 
       // BSCScan API endpoint for token balances with API key
-      const apiUrl = `https://api.bscscan.com/api?module=account&action=tokenlist&address=${address}&apikey=${apiKey}`;
-      console.log('BSCScan API URL:', apiUrl.replace(apiKey, 'API_KEY_HIDDEN'));
-
-      const response = await fetch(apiUrl, {
-        headers: {
-          'User-Agent': 'KalySwap/1.0'
+      const response = await fetch(
+        `https://api.bscscan.com/api?module=account&action=tokenlist&address=${address}&apikey=${apiKey}`,
+        {
+          headers: {
+            'User-Agent': 'KalySwap/1.0'
+          }
         }
-      });
+      );
 
       if (!response.ok) {
         console.warn(`BSCScan API request failed with status ${response.status}, falling back to predefined tokens`);
@@ -426,7 +424,6 @@ export class MultichainTokenService {
       }
 
       const data = await response.json();
-      console.log('BSCScan API Response:', JSON.stringify(data, null, 2));
 
       // BSCScan returns status '0' for errors, '1' for success
       if (data.status !== '1' || !data.result || !Array.isArray(data.result)) {
@@ -473,22 +470,20 @@ export class MultichainTokenService {
 
       // Get API key from environment
       const apiKey = process.env.ARBISCAN_API_KEY;
-      console.log('Arbiscan API Key loaded:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NOT FOUND');
-
       if (!apiKey) {
         console.warn('ARBISCAN_API_KEY not found in environment, falling back to predefined tokens');
         return this.getTokensFromPredefinedList(42161, address);
       }
 
       // Arbiscan API endpoint for token balances with API key
-      const apiUrl = `https://api.arbiscan.io/api?module=account&action=tokenlist&address=${address}&apikey=${apiKey}`;
-      console.log('Arbiscan API URL:', apiUrl.replace(apiKey, 'API_KEY_HIDDEN'));
-
-      const response = await fetch(apiUrl, {
-        headers: {
-          'User-Agent': 'KalySwap/1.0'
+      const response = await fetch(
+        `https://api.arbiscan.io/api?module=account&action=tokenlist&address=${address}&apikey=${apiKey}`,
+        {
+          headers: {
+            'User-Agent': 'KalySwap/1.0'
+          }
         }
-      });
+      );
 
       if (!response.ok) {
         console.warn(`Arbiscan API request failed with status ${response.status}, falling back to predefined tokens`);
@@ -496,7 +491,6 @@ export class MultichainTokenService {
       }
 
       const data = await response.json();
-      console.log('Arbiscan API Response:', JSON.stringify(data, null, 2));
 
       // Arbiscan returns status '0' for errors, '1' for success
       if (data.status !== '1' || !data.result || !Array.isArray(data.result)) {
