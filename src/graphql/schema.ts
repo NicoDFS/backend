@@ -10,6 +10,7 @@ import { apiKeyResolvers } from './resolvers/apiKey';
 import { projectResolvers } from './resolvers/project';
 import { fairlaunchResolvers } from './resolvers/fairlaunch';
 import { farmResolvers } from './resolvers/farm';
+import { multichainResolvers } from './resolvers/multichain';
 
 const typeDefs = gql`
   type Token {
@@ -597,14 +598,33 @@ const typeDefs = gql`
   }
 
   type WalletBalance {
-    klc: String!
+    native: NativeTokenBalance!
     tokens: [TokenBalance!]!
+  }
+
+  type NativeTokenBalance {
+    symbol: String!
+    balance: String!
+    formattedBalance: String!
   }
 
   type TokenBalance {
     symbol: String!
     balance: String!
     address: String!
+    formattedBalance: String!
+    decimals: Int!
+    name: String!
+  }
+
+  type ChainInfo {
+    chainId: Int!
+    name: String!
+    symbol: String!
+    decimals: Int!
+    rpcUrl: String!
+    blockExplorer: String!
+    isTestnet: Boolean!
   }
 
   type Transaction {
@@ -860,10 +880,14 @@ const typeDefs = gql`
     user(id: ID!): User
     userByUsername(username: String!): User
     wallet(address: String!): Wallet
-    walletBalance(address: String!): WalletBalance
+    walletBalance(address: String!, chainId: Int = 3888): WalletBalance
     exportWallet(walletId: ID!, password: String!): ExportWalletResponse
     userTransactions(limit: Int, offset: Int): [Transaction!]!
     walletTransactions(walletId: ID!, limit: Int, offset: Int): [Transaction!]!
+
+    # Multichain queries
+    supportedChains: [ChainInfo!]!
+    walletsByChain(chainId: Int!): [Wallet!]!
 
     # API Key queries
     myApiKeys: [ApiKey!]!
@@ -878,8 +902,8 @@ const typeDefs = gql`
     # User mutations
     register(username: String!, email: String, password: String!): AuthResponse!
     login(username: String!, password: String!): AuthResponse!
-    createWallet(password: String!): Wallet!
-    importWallet(privateKey: String!, password: String!): Wallet!
+    createWallet(password: String!, chainId: Int = 3888): Wallet!
+    importWallet(privateKey: String!, password: String!, chainId: Int = 3888): Wallet!
 
     # Transaction mutations
     sendTransaction(input: SendTransactionInput!): TransactionResponse!
@@ -944,5 +968,6 @@ export const schema = makeExecutableSchema({
     apiKeyResolvers,
     projectResolvers,
     fairlaunchResolvers,
+    multichainResolvers,
   ],
 });

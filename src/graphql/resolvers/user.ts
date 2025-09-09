@@ -86,9 +86,9 @@ export const userResolvers = {
       };
     },
 
-    // Get wallet balance
-    walletBalance: async (_: any, { address }: { address: string }) => {
-      return await walletService.getWalletBalance(address);
+    // Get wallet balance (multichain support)
+    walletBalance: async (_: any, { address, chainId = 3888 }: { address: string; chainId?: number }) => {
+      return await walletService.getWalletBalance(address, chainId);
     },
 
     // Export wallet as keystore and private key
@@ -255,15 +255,15 @@ export const userResolvers = {
       }
     },
 
-    // Create a new wallet for the authenticated user
-    createWallet: async (_: any, { password }: { password: string }, context: Context) => {
+    // Create a new wallet for the authenticated user (multichain support)
+    createWallet: async (_: any, { password, chainId = 3888 }: { password: string; chainId?: number }, context: Context) => {
       try {
         // Authenticate user
         const user = await authenticate(context);
         checkPermission(context, ApiKeyPermissions.WRITE_USER);
 
-        // Generate wallet
-        const wallet = await walletService.generateWallet(user.id, password);
+        // Generate wallet for specified chain
+        const wallet = await walletService.generateWallet(user.id, password, chainId);
 
         return {
           id: wallet.id,
@@ -277,41 +277,21 @@ export const userResolvers = {
       }
     },
 
-    // Import an existing wallet using private key
-    importWallet: async (_: any, { privateKey, password }: { privateKey: string, password: string }, context: any) => {
+    // Import an existing wallet using private key (multichain support)
+    importWallet: async (_: any, { privateKey, password, chainId = 3888 }: { privateKey: string; password: string; chainId?: number }, context: any) => {
       try {
         // Authenticate user
         const user = await authenticate(context);
 
-        // Create wallet from private key
-        const wallet = new ethers.Wallet(privateKey);
-
-        // Generate salt and IV for encryption
-        const salt = KalyWalletGenerator.generateSalt();
-        const iv = KalyWalletGenerator.generateIV();
-
-        // Encrypt private key
-        const encryptedPrivateKey = KalyWalletGenerator.encryptPrivateKey(privateKey, password, salt, iv);
-
-        // Create wallet data
-        const walletData = {
-          userId: user.id,
-          address: wallet.address,
-          encryptedPrivateKey,
-          salt,
-          iv,
-          chainId: KalyWalletGenerator.KALYCHAIN_ID
-        };
-
-        // Store wallet
-        const createdWallet = await walletService.createWallet(walletData);
+        // Import wallet for specified chain using wallet service
+        const wallet = await walletService.importWallet(privateKey, password, user.id, chainId);
 
         return {
-          id: createdWallet.id,
-          address: createdWallet.address,
-          chainId: createdWallet.chainId,
-          createdAt: createdWallet.createdAt.toISOString(),
-          updatedAt: createdWallet.updatedAt.toISOString()
+          id: wallet.id,
+          address: wallet.address,
+          chainId: wallet.chainId,
+          createdAt: wallet.createdAt.toISOString(),
+          updatedAt: wallet.updatedAt.toISOString()
         };
       } catch (error) {
         throw new Error(`Wallet import failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -568,9 +548,9 @@ export const userResolvers = {
   },
 
   Wallet: {
-    // Resolve balance for a wallet
-    balance: async (parent: { address: string }) => {
-      return await walletService.getWalletBalance(parent.address);
+    // Resolve balance for a wallet (multichain support)
+    balance: async (parent: { address: string; chainId: number }) => {
+      return await walletService.getWalletBalance(parent.address, parent.chainId);
     },
 
     // Resolve transactions for a wallet using KalyScan API

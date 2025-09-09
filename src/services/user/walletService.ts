@@ -3,36 +3,19 @@ import { ethers } from 'ethers';
 import { Wallet, CreateWalletData, IWalletService } from '../../models/User';
 import KalyWalletGenerator, { EncryptedWallet } from './walletGenerator';
 import { prisma } from '../../lib/prisma';
+import { multiRPCProviderService } from '../multichain/rpcProviderService';
+import { multichainTokenService } from '../multichain/tokenService';
 
-// ERC20 ABI for token balance checking
-const ERC20_ABI = [
-  'function balanceOf(address owner) view returns (uint256)',
-  'function decimals() view returns (uint8)',
-  'function symbol() view returns (string)'
-];
-
-// Token addresses on KalyChain
-const TOKEN_ADDRESSES = {
-  USDT: '0x2CA775C77B922A51FcF3097F52bFFdbc0250D99A',
-  USDC: '0x9cAb0c396cF0F4325913f2269a0b72BD4d46E3A9',
-  DAI: '0x6E92CAC380F7A7B86f4163fad0df2F277B16Edc6',
-  WBTC: '0xaA77D4a26d432B82DB07F8a47B7f7F623fd92455',
-  WKLC: '0x069255299Bb729399f3CECaBdc73d15d3D10a2A3',
-  KSWAP: '0xCC93b84cEed74Dc28c746b7697d6fA477ffFf65a'
-};
+// Legacy token addresses - now handled by multichainTokenService
+// Keeping for backward compatibility during migration
 
 /**
  * Wallet service implementation
  * Handles wallet creation, management, and balance checking
  */
 export class WalletService implements IWalletService {
-  private readonly provider: ethers.providers.JsonRpcProvider;
-
   constructor() {
-    // Initialize provider for KalyChain
-    this.provider = new ethers.providers.JsonRpcProvider(
-      process.env.KALYCHAIN_RPC_URL || 'https://rpc.kalychain.io/rpc'
-    );
+    // No longer need a single provider - using multiRPCProviderService
   }
 
   /**
@@ -63,13 +46,19 @@ export class WalletService implements IWalletService {
   }
 
   /**
-   * Generate a new wallet for a user
+   * Generate a new wallet for a user on a specific chain
    * @param userId User ID
    * @param password Password for encrypting the private key
+   * @param chainId Chain ID (defaults to KalyChain)
    * @returns Created wallet
    */
-  async generateWallet(userId: string, password: string): Promise<Wallet> {
-    // Generate encrypted wallet
+  async generateWallet(userId: string, password: string, chainId: number = 3888): Promise<Wallet> {
+    // Validate chain is supported
+    if (!multiRPCProviderService.isChainSupported(chainId)) {
+      throw new Error(`Unsupported chain ID: ${chainId}`);
+    }
+
+    // Generate encrypted wallet (same private key works on all EVM chains)
     const encryptedWallet = KalyWalletGenerator.generateEncryptedWallet(password);
 
     // Create wallet data
@@ -79,7 +68,38 @@ export class WalletService implements IWalletService {
       encryptedPrivateKey: encryptedWallet.encryptedPrivateKey,
       salt: encryptedWallet.salt,
       iv: encryptedWallet.iv,
-      chainId: KalyWalletGenerator.KALYCHAIN_ID
+      chainId // Now supports multiple chains
+    };
+
+    // Create and return wallet
+    return this.createWallet(walletData);
+  }
+
+  /**
+   * Import an existing wallet for a user on a specific chain
+   * @param privateKey Private key to import
+   * @param password Password for encrypting the private key
+   * @param userId User ID
+   * @param chainId Chain ID (defaults to KalyChain)
+   * @returns Imported wallet
+   */
+  async importWallet(privateKey: string, password: string, userId: string, chainId: number = 3888): Promise<Wallet> {
+    // Validate chain is supported
+    if (!multiRPCProviderService.isChainSupported(chainId)) {
+      throw new Error(`Unsupported chain ID: ${chainId}`);
+    }
+
+    // Import and encrypt wallet
+    const encryptedWallet = KalyWalletGenerator.importEncryptedWallet(privateKey, password);
+
+    // Create wallet data
+    const walletData: CreateWalletData = {
+      userId,
+      address: encryptedWallet.address,
+      encryptedPrivateKey: encryptedWallet.encryptedPrivateKey,
+      salt: encryptedWallet.salt,
+      iv: encryptedWallet.iv,
+      chainId // Now supports multiple chains
     };
 
     // Create and return wallet
@@ -94,6 +114,21 @@ export class WalletService implements IWalletService {
   async getWalletsByUserId(userId: string): Promise<Wallet[]> {
     return await prisma.wallet.findMany({
       where: { userId }
+    });
+  }
+
+  /**
+   * Get wallets for a user on a specific chain
+   * @param userId User ID
+   * @param chainId Chain ID
+   * @returns Array of wallets for the specified chain
+   */
+  async getWalletsByUserIdAndChain(userId: string, chainId: number): Promise<Wallet[]> {
+    return await prisma.wallet.findMany({
+      where: {
+        userId,
+        chainId
+      }
     });
   }
 
@@ -114,33 +149,56 @@ export class WalletService implements IWalletService {
   }
 
   /**
-   * Get wallet balances (KLC and tokens)
+   * Get wallet balances for a specific chain
    * @param address Wallet address
-   * @returns Object with KLC balance and token balances
+   * @param chainId Chain ID (defaults to KalyChain)
+   * @returns Object with native token balance and ERC20 token balances
    */
-  async getWalletBalance(address: string): Promise<{
-    klc: string;
-    tokens: { symbol: string; balance: string; address: string; }[];
+  async getWalletBalance(address: string, chainId: number = 3888): Promise<{
+    native: { symbol: string; balance: string; formattedBalance: string; };
+    tokens: { symbol: string; balance: string; address: string; formattedBalance: string; decimals: number; name: string; }[];
   }> {
     try {
-      // Get KLC balance
-      const klcBalance = await this.provider.getBalance(address);
-      const klcBalanceFormatted = ethers.utils.formatEther(klcBalance);
+      // Validate chain is supported
+      if (!multiRPCProviderService.isChainSupported(chainId)) {
+        throw new Error(`Unsupported chain ID: ${chainId}`);
+      }
 
-      // Get token balances from KalyScan API
-      const tokens = await this.getTokenBalancesFromAPI(address);
-      console.log(`Got ${tokens.length} tokens from API, filtering for non-zero balances...`);
+      // Get all token balances using multichain token service
+      const allBalances = await multichainTokenService.getAllTokenBalances(chainId, address);
 
-      const nonZeroTokens = tokens.filter(t => parseFloat(t.balance) > 0);
-      console.log(`Returning ${nonZeroTokens.length} tokens with non-zero balance`);
+      // Separate native token from ERC20 tokens
+      const nativeBalance = allBalances.find(balance =>
+        balance.address === '0x0000000000000000000000000000000000000000'
+      );
+
+      const tokenBalances = allBalances.filter(balance =>
+        balance.address !== '0x0000000000000000000000000000000000000000' &&
+        parseFloat(balance.formattedBalance) > 0 // Only return tokens with non-zero balance
+      );
+
+      if (!nativeBalance) {
+        throw new Error(`Failed to get native token balance for chain ${chainId}`);
+      }
 
       return {
-        klc: klcBalanceFormatted,
-        tokens: nonZeroTokens
+        native: {
+          symbol: nativeBalance.symbol,
+          balance: nativeBalance.balance,
+          formattedBalance: nativeBalance.formattedBalance
+        },
+        tokens: tokenBalances.map(token => ({
+          symbol: token.symbol,
+          balance: token.balance,
+          address: token.address,
+          formattedBalance: token.formattedBalance,
+          decimals: token.decimals,
+          name: token.name
+        }))
       };
     } catch (error) {
-      console.error('Error fetching wallet balance:', error);
-      throw new Error('Failed to fetch wallet balance');
+      console.error(`Error fetching wallet balance for chain ${chainId}:`, error);
+      throw new Error(`Failed to fetch wallet balance for chain ${chainId}`);
     }
   }
 

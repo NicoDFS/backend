@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { getProvider } from '../../blockchain/providers';
+import { multiRPCProviderService } from '../multichain/rpcProviderService';
 import KalyWalletGenerator, { EncryptedWallet } from './walletGenerator';
 import { walletService } from './walletService';
 import { transactionService } from './transactionService';
@@ -54,35 +54,44 @@ export interface TransactionResponse {
 }
 
 export class TransactionSenderService {
-  private provider: ethers.providers.Provider;
-
   constructor() {
-    this.provider = getProvider();
+    // No longer need a single provider - we'll use multiRPCProviderService
   }
 
   /**
-   * Send a transaction (native KLC or ERC20 token)
+   * Send a transaction (native token or ERC20 token) on any supported chain
    * @param input Transaction input parameters
    * @param userId User ID for authentication
    * @returns Transaction response
    */
   async sendTransaction(input: SendTransactionInput, userId: string): Promise<TransactionResponse> {
     try {
-      // Get and validate wallet
-      const wallet = await this.getAndValidateWallet(input.walletId, userId, input.password);
+      // Validate chain is supported
+      if (!multiRPCProviderService.isChainSupported(input.chainId)) {
+        throw new Error(`Unsupported chain ID: ${input.chainId}`);
+      }
 
-      // Create ethers wallet instance
-      const ethersWallet = new ethers.Wallet(wallet.privateKey, this.provider);
+      // Get and validate wallet
+      const wallet = await this.getAndValidateWallet(input.walletId, userId, input.password, input.chainId);
+
+      // Get provider for the specific chain
+      const provider = multiRPCProviderService.getProvider(input.chainId);
+
+      // Create ethers wallet instance with chain-specific provider
+      const ethersWallet = new ethers.Wallet(wallet.privateKey, provider);
+
+      // Get chain configuration
+      const chainConfig = multiRPCProviderService.getChainConfig(input.chainId);
 
       // Determine if this is a native token transfer or ERC20 token transfer
-      const isNativeToken = input.asset.toUpperCase() === 'KLC' ||
+      const isNativeToken = input.asset.toUpperCase() === chainConfig.symbol ||
                            input.asset === '0x0000000000000000000000000000000000000000' ||
                            !isValidAddress(input.asset);
 
       // Prepare transaction based on type (native or token)
       let transaction: ethers.providers.TransactionRequest;
       let tokenSymbol = input.asset.toUpperCase();
-      let tokenDecimals = 18;
+      let tokenDecimals = chainConfig.decimals;
       let tokenAddress: string | null = null;
 
       if (!isNativeToken) {
@@ -92,18 +101,21 @@ export class TransactionSenderService {
           tokenAddress,
           input.toAddress,
           input.amount,
-          ethersWallet
+          ethersWallet,
+          input.chainId
         );
         transaction = tokenResult.transaction;
         tokenSymbol = tokenResult.symbol;
         tokenDecimals = tokenResult.decimals;
       } else {
-        // Native KLC transfer
+        // Native token transfer (KLC, BNB, ETH)
         tokenAddress = null;
+        tokenSymbol = chainConfig.symbol;
         transaction = await this.prepareNativeTransaction(
           input.toAddress,
           input.amount,
-          ethersWallet
+          ethersWallet,
+          input.chainId
         );
       }
 
@@ -120,13 +132,34 @@ export class TransactionSenderService {
         try {
           transaction.gasLimit = await ethersWallet.estimateGas(transaction);
         } catch (error) {
-          throw new Error(`Gas estimation failed: ${error instanceof Error ? error.message : String(error)}`);
+          console.warn('Gas estimation failed, using fallback gas limit:', error);
+          // Use fallback gas limits based on transaction type and chain
+          if (tokenAddress) {
+            // ERC20 transfer - needs more gas
+            transaction.gasLimit = input.chainId === 42161 ?
+              ethers.BigNumber.from(200000) : // Arbitrum needs less gas
+              ethers.BigNumber.from(100000);   // BSC/KalyChain
+          } else {
+            // Native token transfer - needs less gas
+            transaction.gasLimit = ethers.BigNumber.from(21000);
+          }
         }
       }
 
       // Get gas price if not provided
       if (!transaction.gasPrice) {
-        transaction.gasPrice = await this.provider.getGasPrice();
+        let gasPrice = await provider.getGasPrice();
+
+        // Apply chain-specific gas price adjustments
+        if (input.chainId === 56) { // BSC
+          // BSC often needs slightly higher gas price for faster confirmation
+          gasPrice = gasPrice.mul(110).div(100); // 10% increase
+        } else if (input.chainId === 42161) { // Arbitrum
+          // Arbitrum has different gas mechanics, but provider should handle this
+          // Keep the provider's gas price
+        }
+
+        transaction.gasPrice = gasPrice;
       }
 
       // Calculate fee
@@ -175,18 +208,26 @@ export class TransactionSenderService {
   }
 
   /**
-   * Send a contract transaction (arbitrary contract call)
+   * Send a contract transaction (arbitrary contract call) on any supported chain
    * @param input Contract transaction input parameters
    * @param userId User ID for authentication
    * @returns Transaction response
    */
   async sendContractTransaction(input: SendContractTransactionInput, userId: string): Promise<TransactionResponse> {
     try {
-      // Get and validate wallet
-      const wallet = await this.getAndValidateWallet(input.walletId, userId, input.password);
+      // Validate chain is supported
+      if (!multiRPCProviderService.isChainSupported(input.chainId)) {
+        throw new Error(`Unsupported chain ID: ${input.chainId}`);
+      }
 
-      // Create ethers wallet instance
-      const ethersWallet = new ethers.Wallet(wallet.privateKey, this.provider);
+      // Get and validate wallet
+      const wallet = await this.getAndValidateWallet(input.walletId, userId, input.password, input.chainId);
+
+      // Get provider for the specific chain
+      const provider = multiRPCProviderService.getProvider(input.chainId);
+
+      // Create ethers wallet instance with chain-specific provider
+      const ethersWallet = new ethers.Wallet(wallet.privateKey, provider);
 
       // Prepare contract transaction
       const transaction: ethers.providers.TransactionRequest = {
@@ -202,7 +243,7 @@ export class TransactionSenderService {
       } else {
         // Estimate gas for contract call
         try {
-          const estimatedGas = await this.provider.estimateGas(transaction);
+          const estimatedGas = await provider.estimateGas(transaction);
           transaction.gasLimit = estimatedGas.mul(120).div(100); // Add 20% buffer
         } catch (gasError) {
           console.warn('Gas estimation failed, using default:', gasError);
@@ -213,8 +254,8 @@ export class TransactionSenderService {
       if (input.gasPrice) {
         transaction.gasPrice = ethers.BigNumber.from(input.gasPrice);
       } else {
-        // Get current gas price
-        const gasPrice = await this.provider.getGasPrice();
+        // Get current gas price from chain-specific provider
+        const gasPrice = await provider.getGasPrice();
         transaction.gasPrice = gasPrice;
       }
 
@@ -261,15 +302,20 @@ export class TransactionSenderService {
   }
 
   /**
-   * Get and validate wallet with password
+   * Get and validate wallet with password and chain compatibility
    */
-  private async getAndValidateWallet(walletId: string, userId: string, password: string) {
+  private async getAndValidateWallet(walletId: string, userId: string, password: string, chainId: number) {
     // Get user wallets and find the specific wallet
     const userWallets = await walletService.getWalletsByUserId(userId);
     const dbWallet = userWallets.find(w => w.id === walletId);
 
     if (!dbWallet) {
       throw new Error('Wallet not found or does not belong to user');
+    }
+
+    // Validate wallet is for the correct chain
+    if (dbWallet.chainId !== chainId) {
+      throw new Error(`Wallet is for chain ${dbWallet.chainId}, but transaction is for chain ${chainId}`);
     }
 
     // Decrypt wallet with password
@@ -293,15 +339,19 @@ export class TransactionSenderService {
   }
 
   /**
-   * Prepare native KLC transaction
+   * Prepare native token transaction (KLC, BNB, ETH)
    */
   private async prepareNativeTransaction(
     toAddress: string,
     amount: string,
-    wallet: ethers.Wallet
+    wallet: ethers.Wallet,
+    chainId: number
   ): Promise<ethers.providers.TransactionRequest> {
-    // Convert amount from KLC to wei (18 decimals)
-    const amountInWei = ethers.utils.parseEther(amount);
+    // Get chain config for proper decimals
+    const chainConfig = multiRPCProviderService.getChainConfig(chainId);
+
+    // Convert amount to wei using chain-specific decimals
+    const amountInWei = ethers.utils.parseUnits(amount, chainConfig.decimals);
 
     return {
       to: toAddress,
@@ -317,7 +367,8 @@ export class TransactionSenderService {
     tokenAddress: string,
     toAddress: string,
     amount: string,
-    wallet: ethers.Wallet
+    wallet: ethers.Wallet,
+    chainId: number
   ) {
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
 
@@ -352,11 +403,14 @@ export class TransactionSenderService {
   }
 
   /**
-   * Get transaction status and update database
+   * Get transaction status and update database (multichain)
    */
-  async updateTransactionStatus(hash: string): Promise<void> {
+  async updateTransactionStatus(hash: string, chainId: number): Promise<void> {
     try {
-      const receipt = await this.provider.getTransactionReceipt(hash);
+      // Get provider for the specific chain
+      const provider = multiRPCProviderService.getProvider(chainId);
+
+      const receipt = await provider.getTransactionReceipt(hash);
       if (receipt) {
         const dbTransaction = await transactionService.getTransactionByHash(hash);
         if (dbTransaction) {
@@ -365,7 +419,7 @@ export class TransactionSenderService {
         }
       }
     } catch (error) {
-      console.error('Error updating transaction status:', error);
+      console.error(`Error updating transaction status for chain ${chainId}:`, error);
     }
   }
 }
