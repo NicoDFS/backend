@@ -31,7 +31,7 @@ export interface TokenBalance {
 export class MultichainTokenService {
   private chainTokens: Map<number, TokenInfo[]> = new Map();
   private apiCallTimestamps = new Map<string, number>();
-  private readonly API_RATE_LIMIT = 5000; // 5 seconds between API calls per endpoint (increased from 2s)
+  private readonly API_RATE_LIMIT = 2000; // 2 seconds between API calls (free tier is 2/sec max)
 
   constructor() {
     this.initializeTokenLists();
@@ -390,7 +390,8 @@ export class MultichainTokenService {
   }
 
   /**
-   * Get ALL tokens from BSC using BSCScan API
+   * Get ALL tokens from BSC using BSCScan API (Free Tier)
+   * Discovers all tokens by getting transaction history, then checking balances
    */
   private async getBSCTokensFromAPI(address: string): Promise<TokenBalance[]> {
     try {
@@ -401,55 +402,107 @@ export class MultichainTokenService {
         return this.getTokensFromPredefinedList(56, address);
       }
 
-      // Get API key from environment
+      // Get BSC-specific API key from environment
       const apiKey = process.env.BSCSCAN_API_KEY;
       if (!apiKey) {
         console.warn('BSCSCAN_API_KEY not found in environment, falling back to predefined tokens');
         return this.getTokensFromPredefinedList(56, address);
       }
 
-      // BSCScan API endpoint for token balances with API key
-      const response = await fetch(
-        `https://api.bscscan.com/api?module=account&action=tokenlist&address=${address}&apikey=${apiKey}`,
-        {
-          headers: {
-            'User-Agent': 'KalySwap/1.0'
+      // Step 1: Get all token transactions to discover what tokens this address has interacted with
+      const tokentxUrl = `https://api.bscscan.com/api?module=account&action=tokentx&address=${address}&startblock=0&endblock=999999999&sort=desc&apikey=${apiKey}`;
+
+      const tokentxResponse = await fetch(tokentxUrl, {
+        headers: { 'User-Agent': 'KalySwap/1.0' }
+      });
+
+      if (!tokentxResponse.ok) {
+        console.warn('BSCScan tokentx API request failed, falling back to predefined tokens');
+        return this.getTokensFromPredefinedList(56, address);
+      }
+
+      const tokentxData = await tokentxResponse.json();
+
+      if (tokentxData.status !== '1' || !tokentxData.result || !Array.isArray(tokentxData.result)) {
+        console.warn('Invalid BSCScan tokentx API response, falling back to predefined tokens');
+        return this.getTokensFromPredefinedList(56, address);
+      }
+
+      // Step 2: Extract unique token contracts from transactions
+      const uniqueTokens = new Map<string, {symbol: string, name: string, decimals: number, address: string}>();
+
+      for (const tx of tokentxData.result) {
+        if (tx.contractAddress && tx.tokenSymbol && tx.tokenName && tx.tokenDecimal) {
+          const contractAddress = tx.contractAddress.toLowerCase();
+          if (!uniqueTokens.has(contractAddress)) {
+            uniqueTokens.set(contractAddress, {
+              symbol: tx.tokenSymbol,
+              name: tx.tokenName,
+              decimals: parseInt(tx.tokenDecimal),
+              address: tx.contractAddress // Keep original case
+            });
           }
         }
-      );
-
-      if (!response.ok) {
-        console.warn(`BSCScan API request failed with status ${response.status}, falling back to predefined tokens`);
-        return this.getTokensFromPredefinedList(56, address);
       }
 
-      const data = await response.json();
+      console.log(`BSCScan: Found ${uniqueTokens.size} unique tokens from transaction history for ${address}`);
 
-      // BSCScan returns status '0' for errors, '1' for success
-      if (data.status !== '1' || !data.result || !Array.isArray(data.result)) {
-        console.warn(`Invalid BSCScan API response: ${data.status} - ${data.message || 'Unknown error'}, falling back to predefined tokens`);
-        return this.getTokensFromPredefinedList(56, address);
+      // Step 3: Check current balance for each unique token
+      const tokenBalances: TokenBalance[] = [];
+      const tokens = Array.from(uniqueTokens.values());
+
+      // Batch balance requests (max 5 at a time to avoid rate limits)
+      const batchSize = 5;
+      for (let i = 0; i < tokens.length; i += batchSize) {
+        const batch = tokens.slice(i, i + batchSize);
+
+        const batchPromises = batch.map(async (token) => {
+          try {
+            const balanceUrl = `https://api.bscscan.com/api?module=account&action=tokenbalance&contractaddress=${token.address}&address=${address}&tag=latest&apikey=${apiKey}`;
+
+            const response = await fetch(balanceUrl, {
+              headers: { 'User-Agent': 'KalySwap/1.0' }
+            });
+
+            if (!response.ok) return null;
+
+            const data = await response.json();
+
+            if (data.status !== '1' || !data.result) return null;
+
+            const balance = data.result;
+            const formattedBalance = ethers.utils.formatUnits(balance, token.decimals);
+
+            // Only return tokens with balance > 0
+            if (parseFloat(formattedBalance) > 0) {
+              return {
+                symbol: token.symbol,
+                balance: balance.toString(),
+                address: token.address,
+                decimals: token.decimals,
+                name: token.name,
+                formattedBalance
+              };
+            }
+            return null;
+          } catch (error) {
+            console.warn(`Error fetching balance for ${token.symbol} (${token.address}):`, error);
+            return null;
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        const validResults = batchResults.filter((result: any) => result !== null) as TokenBalance[];
+        tokenBalances.push(...validResults);
+
+        // Add delay between batches to respect rate limits
+        if (i + batchSize < tokens.length) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
       }
 
-      const tokens = data.result
-        .map((item: any) => {
-          const balance = item.balance;
-          const decimals = parseInt(item.decimals) || 18;
-          const formattedBalance = ethers.utils.formatUnits(balance, decimals);
-
-          return {
-            symbol: item.symbol || 'UNKNOWN',
-            balance: balance.toString(),
-            address: item.contractAddress,
-            decimals,
-            name: item.name || 'Unknown Token',
-            formattedBalance
-          };
-        })
-        .filter((token: any) => parseFloat(token.formattedBalance) > 0); // Only tokens with balance
-
-      console.log(`BSCScan: Found ${tokens.length} tokens with balances for ${address}`);
-      return tokens;
+      console.log(`BSCScan API: Found ${tokenBalances.length} tokens with balances for ${address}`);
+      return tokenBalances;
     } catch (error) {
       console.error('Error fetching tokens from BSCScan API:', error);
       return this.getTokensFromPredefinedList(56, address);
@@ -457,66 +510,132 @@ export class MultichainTokenService {
   }
 
   /**
-   * Get ALL tokens from Arbitrum using Arbiscan API
+   * Get ALL tokens from Arbitrum using Arbiscan API (Free Tier)
+   * Discovers all tokens by getting transaction history, then checking balances
    */
   private async getArbitrumTokensFromAPI(address: string): Promise<TokenBalance[]> {
     try {
-      // Check rate limiting
-      const endpoint = 'arbiscan-tokenlist';
-      if (!this.canMakeApiCall(endpoint)) {
-        console.warn('Arbiscan API rate limited, falling back to predefined tokens');
+      // Check rate limiting for tokentx call
+      const tokentxEndpoint = 'arbiscan-tokentx';
+      if (!this.canMakeApiCall(tokentxEndpoint)) {
+        console.warn('Arbiscan tokentx API rate limited, falling back to predefined tokens');
         return this.getTokensFromPredefinedList(42161, address);
       }
 
-      // Get API key from environment
+      // Get Arbitrum-specific API key from environment
       const apiKey = process.env.ARBISCAN_API_KEY;
       if (!apiKey) {
         console.warn('ARBISCAN_API_KEY not found in environment, falling back to predefined tokens');
         return this.getTokensFromPredefinedList(42161, address);
       }
 
-      // Arbiscan API endpoint for token balances with API key
-      const response = await fetch(
-        `https://api.arbiscan.io/api?module=account&action=tokenlist&address=${address}&apikey=${apiKey}`,
-        {
-          headers: {
-            'User-Agent': 'KalySwap/1.0'
+      // Step 1: Get all token transactions to discover what tokens this address has interacted with
+      const tokentxUrl = `https://api.arbiscan.io/api?module=account&action=tokentx&address=${address}&startblock=0&endblock=999999999&sort=desc&apikey=${apiKey}`;
+
+      const tokentxResponse = await fetch(tokentxUrl, {
+        headers: { 'User-Agent': 'KalySwap/1.0' }
+      });
+
+      if (!tokentxResponse.ok) {
+        console.warn('Arbiscan tokentx API request failed, falling back to predefined tokens');
+        return this.getTokensFromPredefinedList(42161, address);
+      }
+
+      const tokentxData = await tokentxResponse.json();
+
+      if (tokentxData.status !== '1' || !tokentxData.result || !Array.isArray(tokentxData.result)) {
+        console.warn('Invalid Arbiscan tokentx API response, falling back to predefined tokens');
+        return this.getTokensFromPredefinedList(42161, address);
+      }
+
+      // Step 2: Extract unique token contracts from transactions
+      const uniqueTokens = new Map<string, {symbol: string, name: string, decimals: number, address: string}>();
+
+      for (const tx of tokentxData.result) {
+        if (tx.contractAddress && tx.tokenSymbol && tx.tokenName && tx.tokenDecimal) {
+          const contractAddress = tx.contractAddress.toLowerCase();
+          if (!uniqueTokens.has(contractAddress)) {
+            uniqueTokens.set(contractAddress, {
+              symbol: tx.tokenSymbol,
+              name: tx.tokenName,
+              decimals: parseInt(tx.tokenDecimal),
+              address: tx.contractAddress // Keep original case
+            });
           }
         }
-      );
-
-      if (!response.ok) {
-        console.warn(`Arbiscan API request failed with status ${response.status}, falling back to predefined tokens`);
-        return this.getTokensFromPredefinedList(42161, address);
       }
 
-      const data = await response.json();
+      console.log(`Arbiscan: Found ${uniqueTokens.size} unique tokens from transaction history for ${address}`);
 
-      // Arbiscan returns status '0' for errors, '1' for success
-      if (data.status !== '1' || !data.result || !Array.isArray(data.result)) {
-        console.warn(`Invalid Arbiscan API response: ${data.status} - ${data.message || 'Unknown error'}, falling back to predefined tokens`);
-        return this.getTokensFromPredefinedList(42161, address);
+      // Step 3: Check current balance for each unique token
+      const tokenBalances: TokenBalance[] = [];
+      const tokens = Array.from(uniqueTokens.values());
+
+      // Batch balance requests (max 2 at a time to respect 2/sec rate limit)
+      const batchSize = 2;
+      for (let i = 0; i < tokens.length; i += batchSize) {
+        const batch = tokens.slice(i, i + batchSize);
+
+        const batchPromises = batch.map(async (token) => {
+          try {
+            // Check rate limiting for individual balance calls
+            const balanceEndpoint = `arbiscan-balance-${token.address}`;
+            if (!this.canMakeApiCall(balanceEndpoint)) {
+              console.warn(`Arbiscan balance API rate limited for ${token.symbol}, skipping`);
+              return null;
+            }
+
+            const balanceUrl = `https://api.arbiscan.io/api?module=account&action=tokenbalance&contractaddress=${token.address}&address=${address}&tag=latest&apikey=${apiKey}`;
+
+            const response = await fetch(balanceUrl, {
+              headers: { 'User-Agent': 'KalySwap/1.0' }
+            });
+
+            if (!response.ok) {
+              console.warn(`Arbiscan balance API request failed for ${token.symbol}: ${response.status}`);
+              return null;
+            }
+
+            const data = await response.json();
+
+            if (data.status !== '1' || !data.result) {
+              console.warn(`Arbiscan balance API returned invalid data for ${token.symbol}:`, data);
+              return null;
+            }
+
+            const balance = data.result;
+            const formattedBalance = ethers.utils.formatUnits(balance, token.decimals);
+
+            // Only return tokens with balance > 0
+            if (parseFloat(formattedBalance) > 0) {
+              return {
+                symbol: token.symbol,
+                balance: balance.toString(),
+                address: token.address,
+                decimals: token.decimals,
+                name: token.name,
+                formattedBalance
+              };
+            }
+            return null;
+          } catch (error) {
+            console.warn(`Error fetching balance for ${token.symbol} (${token.address}):`, error);
+            return null;
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        const validResults = batchResults.filter((result: any) => result !== null) as TokenBalance[];
+        tokenBalances.push(...validResults);
+
+        // Add delay between batches to respect rate limits (2 calls per second max)
+        if (i + batchSize < tokens.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay between batches
+        }
       }
 
-      const tokens = data.result
-        .map((item: any) => {
-          const balance = item.balance;
-          const decimals = parseInt(item.decimals) || 18;
-          const formattedBalance = ethers.utils.formatUnits(balance, decimals);
-
-          return {
-            symbol: item.symbol || 'UNKNOWN',
-            balance: balance.toString(),
-            address: item.contractAddress,
-            decimals,
-            name: item.name || 'Unknown Token',
-            formattedBalance
-          };
-        })
-        .filter((token: any) => parseFloat(token.formattedBalance) > 0); // Only tokens with balance
-
-      console.log(`Arbiscan: Found ${tokens.length} tokens with balances for ${address}`);
-      return tokens;
+      console.log(`Arbiscan API: Found ${tokenBalances.length} tokens with balances for ${address}`);
+      return tokenBalances;
     } catch (error) {
       console.error('Error fetching tokens from Arbiscan API:', error);
       return this.getTokensFromPredefinedList(42161, address);
@@ -570,6 +689,44 @@ export class MultichainTokenService {
       console.error(`Invalid token contract ${tokenAddress} on chain ${chainId}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Get list of popular BSC tokens for free tier API calls
+   */
+  private getBSCTokenList(): Array<{symbol: string, address: string, decimals: number, name: string}> {
+    return [
+      { symbol: 'USDT', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, name: 'Tether USD' },
+      { symbol: 'USDC', address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', decimals: 18, name: 'USD Coin' },
+      { symbol: 'BUSD', address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', decimals: 18, name: 'Binance USD' },
+      { symbol: 'ETH', address: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8', decimals: 18, name: 'Ethereum Token' },
+      { symbol: 'BTCB', address: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', decimals: 18, name: 'BTCB Token' },
+      { symbol: 'ADA', address: '0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47', decimals: 18, name: 'Cardano Token' },
+      { symbol: 'DOT', address: '0x7083609fCE4d1d8Dc0C979AAb8c869Ea2C873402', decimals: 18, name: 'Polkadot Token' },
+      { symbol: 'LINK', address: '0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD', decimals: 18, name: 'ChainLink Token' },
+      { symbol: 'UNI', address: '0xBf5140A22578168FD562DCcF235E5D43A02ce9B1', decimals: 18, name: 'Uniswap' },
+      { symbol: 'LTC', address: '0x4338665CBB7B2485A8855A139b75D5e34AB0DB94', decimals: 18, name: 'Litecoin Token' },
+      { symbol: 'DOGE', address: '0xbA2aE424d960c26247Dd6c32edC70B295c744C43', decimals: 8, name: 'Dogecoin' },
+      { symbol: 'CAKE', address: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', decimals: 18, name: 'PancakeSwap Token' }
+    ];
+  }
+
+  /**
+   * Get list of popular Arbitrum tokens for free tier API calls
+   */
+  private getArbitrumTokenList(): Array<{symbol: string, address: string, decimals: number, name: string}> {
+    return [
+      { symbol: 'USDC', address: '0xA0b86a33E6441b8435b662303c0f479c7e2f9f0D', decimals: 6, name: 'USD Coin' },
+      { symbol: 'USDT', address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', decimals: 6, name: 'Tether USD' },
+      { symbol: 'WETH', address: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1', decimals: 18, name: 'Wrapped Ether' },
+      { symbol: 'WBTC', address: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f', decimals: 8, name: 'Wrapped BTC' },
+      { symbol: 'ARB', address: '0x912CE59144191C1204E64559FE8253a0e49E6548', decimals: 18, name: 'Arbitrum' },
+      { symbol: 'LINK', address: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4', decimals: 18, name: 'ChainLink Token' },
+      { symbol: 'UNI', address: '0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0', decimals: 18, name: 'Uniswap' },
+      { symbol: 'DAI', address: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1', decimals: 18, name: 'Dai Stablecoin' },
+      { symbol: 'GMX', address: '0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a', decimals: 18, name: 'GMX' },
+      { symbol: 'MAGIC', address: '0x539bdE0d7Dbd336b79148AA742883198BBF60342', decimals: 18, name: 'MAGIC' }
+    ];
   }
 }
 
