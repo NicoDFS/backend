@@ -54,11 +54,12 @@ const startServer = apolloServer.start();
 // Manual CORS handling to avoid conflicts
 const setCorsHeaders = (res: any, origin: string) => {
   const allowedOrigins = [
-    'http://localhost:3001', // Admin panel
-    'http://localhost:3002', // Frontend
+    'http://localhost:3001', // Admin panel (local)
+    'http://localhost:3002', // Frontend (local)
     'http://localhost:3000', // Backend (for testing)
-    'https://app.kalyswap.io',
-    'https://kalyswap.io'
+    'https://app.kalyswap.io', // Main app
+    'https://kalyswap.io', // Main website
+    'https://admin.kalyswap.io' // Admin panel (production)
   ];
 
   // If origin is provided and allowed, use it
