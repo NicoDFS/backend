@@ -301,6 +301,34 @@ dataSources:
           handler: handleReceivedTransferRemote
       file: ./src/hyp-erc20.ts
 
+  # CLISHA Token
+  - kind: ethereum
+    name: CLISHA
+    network: kalychain
+    source:
+      address: "0x376E0ac0B55aA79F9B30aAc8842e5E84fF06360C"
+      abi: HypERC20
+      startBlock: 36259200
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Token
+        - TokenTransfer
+        - BridgeStats
+        - ChainStats
+        - DailyBridgeStats
+      abis:
+        - name: HypERC20
+          file: ../../src/blockchain/abis/bridge/HypERC20.json
+      eventHandlers:
+        - event: SentTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleSentTransferRemote
+        - event: ReceivedTransferRemote(indexed uint32,indexed bytes32,uint256)
+          handler: handleReceivedTransferRemote
+      file: ./src/hyp-erc20.ts
+
 templates:
   - kind: ethereum
     name: HypERC20
