@@ -41,6 +41,8 @@ const setCorsHeaders = (res: NextApiResponse, origin: string) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 };
 
+
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const origin = req.headers.origin || '';
 
@@ -60,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { listId } = req.query;
-    
+
     if (!listId || typeof listId !== 'string') {
       return res.status(400).json({ error: 'Invalid list ID' });
     }
@@ -114,7 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error(`❌ Error fetching token list ${req.query.listId}:`, error);
-    
+
     res.status(500).json({
       error: 'Failed to fetch token list',
       message: error instanceof Error ? error.message : 'Unknown error',
