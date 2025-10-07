@@ -11,6 +11,7 @@ import { projectResolvers } from './resolvers/project';
 import { fairlaunchResolvers } from './resolvers/fairlaunch';
 import { farmResolvers } from './resolvers/farm';
 import { multichainResolvers } from './resolvers/multichain';
+import { swapResolvers } from './resolvers/swap';
 
 const typeDefs = gql`
   type Token {
@@ -795,6 +796,23 @@ const typeDefs = gql`
     blockNumber: Int!
   }
 
+  # Swap Quote Types (Multichain)
+  type SwapQuote {
+    amountOut: String!
+    amountOutMin: String!
+    route: [String!]!
+    priceImpact: String!
+    executionPrice: String!
+    fee: String!
+  }
+
+  type SwapRouterConfig {
+    chainId: Int!
+    routerAddress: String!
+    wethAddress: String!
+    chainName: String!
+  }
+
   type Query {
     # DEX queries
     dexOverview: DexOverview
@@ -814,6 +832,10 @@ const typeDefs = gql`
     routerSwaps(first: Int, skip: Int): [RouterSwap!]!
     lpStakingData: LPStakingData!
     swaps(first: Int, skip: Int, userAddress: String): [Swap!]!
+
+    # Swap Quote queries (Multichain)
+    swapQuote(chainId: Int!, tokenIn: String!, tokenOut: String!, amountIn: String!): SwapQuote!
+    swapRouterConfig(chainId: Int!): SwapRouterConfig
 
     # 24hr Volume queries
     pair24hrVolume(pairAddress: String!, klcPriceUSD: Float!, token0Symbol: String, token1Symbol: String): PairVolumeData!
@@ -969,5 +991,6 @@ export const schema = makeExecutableSchema({
     projectResolvers,
     fairlaunchResolvers,
     multichainResolvers,
+    swapResolvers,
   ],
 });
