@@ -11,16 +11,21 @@ services:
     depends_on:
       - ipfs
       - postgres
+    volumes:
+      - ./config.toml:/etc/graph-node/config.toml
     environment:
       postgres_host: postgres
       postgres_user: graph-node
       postgres_pass: let-me-in
       postgres_db: graph-node
       ipfs: 'ipfs:5001'
-      ethereum: 'kalychain:https://rpc3.kalychain.io/rpc'
+      # Primary RPC endpoint (switched from rpc3 which was stuck at block 39,718,483)
+      ethereum: 'kalychain:https://rpc.kalychain.io/rpc'
+      # For RPC failover (once rpc3 is fixed), use: 'kalychain:https://rpc.kalychain.io/rpc,https://rpc3.kalychain.io/rpc'
       GRAPH_LOG: info
       GRAPH_ALLOW_NON_DETERMINISTIC_IPFS: 'true'
       GRAPH_ETHEREUM_GENESIS_BLOCK_NUMBER: '6880000'
+      GRAPH_NODE_CONFIG: '/etc/graph-node/config.toml'
 
   ipfs:
     image: ipfs/go-ipfs:v0.10.0

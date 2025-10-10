@@ -1,0 +1,19 @@
+[store]
+[store.primary]
+connection = "postgresql://graph-node:let-me-in@postgres:5432/graph-node"
+pool_size = 10
+
+[chains]
+ingestor = "default"
+
+[chains.kalychain]
+shard = "primary"
+provider = [
+  { label = "kalychain-rpc-0", url = "https://rpc.kalychain.io/rpc", features = [] }
+]
+
+[deployment]
+[[deployment.rule]]
+shard = "primary"
+indexers = [ "default" ]
+
