@@ -9,7 +9,7 @@ ingestor = "default"
 [chains.kalychain]
 shard = "primary"
 provider = [
-  { label = "kalychain-rpc-0", url = "https://rpc.kalychain.io/rpc", features = [] }
+  { label = "kalychain-rpc-0", url = "https://rpc.kalychain.io/rpc", features = ["archive"] }
 ]
 
 [deployment]

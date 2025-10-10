@@ -11,32 +11,74 @@ const USDT_WKLC_PAIR = '0x25FDDaF836d12dC5e285823a644bb86E0b79c8e2' // created b
 
 export function getKlcPriceInUSD(): BigDecimal {
   // fetch klc prices for each stablecoin
+  // NOTE: In KalySwap pairs, WKLC is token0 and stablecoin is token1
+  // This is OPPOSITE of Uniswap where stablecoin is token0
   let daiPair = Pair.load(DAI_WKLC_PAIR) // WKLC is token0, DAI is token1
   let usdcPair = Pair.load(USDC_WKLC_PAIR) // WKLC is token0, USDC is token1
   let usdtPair = Pair.load(USDT_WKLC_PAIR) // WKLC is token0, USDT is token1
 
-  // all 3 have been created
+  // all 3 have been created - use weighted average
   if (daiPair !== null && usdcPair !== null && usdtPair !== null) {
     let totalLiquidityKLC = daiPair.reserve0.plus(usdcPair.reserve0).plus(usdtPair.reserve0)
+    // Avoid division by zero
+    if (totalLiquidityKLC.equals(ZERO_BD)) {
+      return ZERO_BD
+    }
     let daiWeight = daiPair.reserve0.div(totalLiquidityKLC)
     let usdcWeight = usdcPair.reserve0.div(totalLiquidityKLC)
     let usdtWeight = usdtPair.reserve0.div(totalLiquidityKLC)
+    // token1Price = stablecoin per WKLC = USD price of KLC
     return daiPair.token1Price
       .times(daiWeight)
       .plus(usdcPair.token1Price.times(usdcWeight))
       .plus(usdtPair.token1Price.times(usdtWeight))
-    // dai and USDC have been created
-  } else if (daiPair !== null && usdcPair !== null) {
+  }
+
+  // Two pairs exist - use weighted average
+  if (daiPair !== null && usdcPair !== null) {
     let totalLiquidityKLC = daiPair.reserve0.plus(usdcPair.reserve0)
+    if (totalLiquidityKLC.equals(ZERO_BD)) {
+      return ZERO_BD
+    }
     let daiWeight = daiPair.reserve0.div(totalLiquidityKLC)
     let usdcWeight = usdcPair.reserve0.div(totalLiquidityKLC)
     return daiPair.token1Price.times(daiWeight).plus(usdcPair.token1Price.times(usdcWeight))
-    // USDC is the only pair so far
-  } else if (usdcPair !== null) {
-    return usdcPair.token1Price
-  } else {
-    return ZERO_BD
   }
+
+  if (daiPair !== null && usdtPair !== null) {
+    let totalLiquidityKLC = daiPair.reserve0.plus(usdtPair.reserve0)
+    if (totalLiquidityKLC.equals(ZERO_BD)) {
+      return ZERO_BD
+    }
+    let daiWeight = daiPair.reserve0.div(totalLiquidityKLC)
+    let usdtWeight = usdtPair.reserve0.div(totalLiquidityKLC)
+    return daiPair.token1Price.times(daiWeight).plus(usdtPair.token1Price.times(usdtWeight))
+  }
+
+  if (usdcPair !== null && usdtPair !== null) {
+    let totalLiquidityKLC = usdcPair.reserve0.plus(usdtPair.reserve0)
+    if (totalLiquidityKLC.equals(ZERO_BD)) {
+      return ZERO_BD
+    }
+    let usdcWeight = usdcPair.reserve0.div(totalLiquidityKLC)
+    let usdtWeight = usdtPair.reserve0.div(totalLiquidityKLC)
+    return usdcPair.token1Price.times(usdcWeight).plus(usdtPair.token1Price.times(usdtWeight))
+  }
+
+  // Only one pair exists - use it directly
+  // token1Price = stablecoin per WKLC = USD price of KLC
+  if (usdtPair !== null) {
+    return usdtPair.token1Price
+  }
+  if (usdcPair !== null) {
+    return usdcPair.token1Price
+  }
+  if (daiPair !== null) {
+    return daiPair.token1Price
+  }
+
+  // No pairs exist yet
+  return ZERO_BD
 }
 
 // token where amounts should contribute to tracked volume and liquidity
@@ -54,10 +96,10 @@ let WHITELIST: string[] = [
 ]
 
 // minimum liquidity required to count towards tracked volume for pairs with small # of Lps
-let MINIMUM_USD_THRESHOLD_NEW_PAIRS = BigDecimal.fromString('100') // Lowered from 400000 to 100 for development
+let MINIMUM_USD_THRESHOLD_NEW_PAIRS = BigDecimal.fromString('40') // Lowered to 40 for KalySwap
 
 // minimum liquidity for price to get tracked
-let MINIMUM_LIQUIDITY_THRESHOLD_KLC = BigDecimal.fromString('0.1') // Lowered from 2 to 0.1 for development
+let MINIMUM_LIQUIDITY_THRESHOLD_KLC = BigDecimal.fromString('0.01') // Lowered to 0.01 KLC for KalySwap
 
 /**
  * Search through graph to find derived Klc per token.
