@@ -255,6 +255,25 @@ export const userResolvers = {
       }
     },
 
+    // Authenticate with wallet address (for Thirdweb in-app wallet users)
+    authenticateWithWallet: async (_: any, { walletAddress, email }: { walletAddress: string; email?: string }) => {
+      try {
+        const { token, user } = await userService.authenticateWithWallet(walletAddress, email);
+        return {
+          token,
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+          },
+        };
+      } catch (error) {
+        throw new Error(`Wallet authentication failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    },
+
     // Create a new wallet for the authenticated user (multichain support)
     createWallet: async (_: any, { password, chainId = 3888 }: { password: string; chainId?: number }, context: Context) => {
       try {

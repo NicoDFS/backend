@@ -7,11 +7,14 @@ import * as crypto from 'crypto';
 export interface User {
   id: string;
   username: string;
-  email?: string;
+  email?: string | null;
   passwordHash: string;
   salt: string;
   createdAt: Date;
   updatedAt: Date;
+  thirdwebWalletAddress?: string | null;
+  walletMigrationStatus?: string;
+  walletMigratedAt?: Date | null;
 }
 
 /**

@@ -11,18 +11,45 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  username      String    @unique
-  email         String?   @unique
-  passwordHash  String
-  salt          String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  wallets       Wallet[]
-  transactions  Transaction[]
-  apiKeys       ApiKey[]
-  projects      Project[]
-  fairlaunches  FairlaunchProject[]
+  id                      String                @id @default(uuid())
+  username                String                @unique
+  email                   String?               @unique
+  passwordHash            String
+  salt                    String
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  wallets                 Wallet[]
+  transactions            Transaction[]
+  apiKeys                 ApiKey[]
+  projects                Project[]
+  fairlaunches            FairlaunchProject[]
+  thirdwebWalletAddress   String?
+  walletMigrationStatus   WalletMigrationStatus @default(NOT_STARTED)
+  walletMigratedAt        DateTime?
+  walletMigrations        WalletMigration[]
+}
+
+enum WalletMigrationStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  OPTED_OUT
+}
+
+model WalletMigration {
+  id                    String    @id @default(uuid())
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id])
+  oldWalletAddress      String
+  newWalletAddress      String
+  oldWalletId           String
+  fundsTransferred      Boolean   @default(false)
+  tokensTransferred     Boolean   @default(false)
+  positionsTransferred  Boolean   @default(false)
+  completedAt           DateTime?
+  createdAt             DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Wallet {
@@ -130,6 +157,9 @@ model Project {
   lpLockDuration        String
   lpRecipient           String?
 
+  // DEX version for liquidity deployment
+  dexVersion            String    @default("v2")  // "v2" or "v3"
+
   // Blockchain Data (required for save)
   contractAddress       String    @unique  // Deployed presale contract address
   transactionHash       String    @unique  // Creation transaction hash
@@ -173,6 +203,9 @@ model FairlaunchProject {
   fairlaunchEnd         DateTime
   isWhitelist           Boolean   @default(false)
   referrer              String?
+
+  // DEX version for liquidity deployment
+  dexVersion            String    @default("v2")  // "v2" or "v3"
 
   // Blockchain Data (required for save)
   contractAddress       String    @unique  // Deployed fairlaunch contract address

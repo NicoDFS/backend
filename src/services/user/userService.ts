@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { User, CreateUserData, IUserService, PasswordUtils } from '../../models/User';
 import { prisma } from '../../lib/prisma';
 
@@ -99,8 +100,8 @@ export class UserService implements IUserService {
     };
 
     return jwt.sign(payload, this.JWT_SECRET, {
-      expiresIn: this.JWT_EXPIRES_IN
-    });
+      expiresIn: this.JWT_EXPIRES_IN as string,
+    } as jwt.SignOptions);
   }
 
   /**
@@ -115,6 +116,61 @@ export class UserService implements IUserService {
     } catch (error) {
       return null;
     }
+  }
+
+  /**
+   * Authenticate a user by wallet address (for Thirdweb in-app wallet users).
+   * Finds existing user by thirdwebWalletAddress or auto-creates one.
+   */
+  async authenticateWithWallet(walletAddress: string, email?: string): Promise<{ token: string; user: User }> {
+    const normalizedAddress = walletAddress.toLowerCase();
+
+    // Try to find existing user by thirdweb wallet address
+    let user = await prisma.user.findFirst({
+      where: { thirdwebWalletAddress: normalizedAddress },
+    });
+
+    if (!user) {
+      // Auto-create user — random password (user authenticates via wallet, never needs it)
+      const salt = PasswordUtils.generateSalt();
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+      const passwordHash = PasswordUtils.hashPassword(randomPassword, salt);
+
+      try {
+        user = await prisma.user.create({
+          data: {
+            username: normalizedAddress,
+            email: email || undefined,
+            passwordHash,
+            salt,
+            thirdwebWalletAddress: normalizedAddress,
+          },
+        });
+      } catch (err: any) {
+        // Handle race condition — username or email unique constraint violation
+        if (err?.code === 'P2002') {
+          user = await prisma.user.findFirst({
+            where: { thirdwebWalletAddress: normalizedAddress },
+          });
+          if (!user) {
+            // Email conflict — retry without email
+            user = await prisma.user.create({
+              data: {
+                username: normalizedAddress,
+                passwordHash,
+                salt,
+                thirdwebWalletAddress: normalizedAddress,
+              },
+            });
+          }
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    const token = this.generateAuthToken(user);
+    return { token, user };
   }
 
   /**

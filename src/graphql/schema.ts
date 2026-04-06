@@ -12,6 +12,7 @@ import { fairlaunchResolvers } from './resolvers/fairlaunch';
 import { farmResolvers } from './resolvers/farm';
 import { multichainResolvers } from './resolvers/multichain';
 import { swapResolvers } from './resolvers/swap';
+import { migrationResolvers } from './resolvers/migration';
 
 const typeDefs = gql`
   type Token {
@@ -484,6 +485,7 @@ const typeDefs = gql`
     presaleEnd: String!
     lpLockDuration: String!
     lpRecipient: String
+    dexVersion: String!
 
     contractAddress: String!
     transactionHash: String!
@@ -516,6 +518,7 @@ const typeDefs = gql`
     fairlaunchEnd: String!
     isWhitelist: Boolean!
     referrer: String
+    dexVersion: String!
 
     contractAddress: String!
     transactionHash: String!
@@ -758,6 +761,7 @@ const typeDefs = gql`
     presaleEnd: String!
     lpLockDuration: String!
     lpRecipient: String
+    dexVersion: String
 
     # Required Blockchain Data
     contractAddress: String!
@@ -789,6 +793,7 @@ const typeDefs = gql`
     fairlaunchEnd: String!
     isWhitelist: Boolean!
     referrer: String
+    dexVersion: String
 
     # Required Blockchain Data
     contractAddress: String!
@@ -915,6 +920,9 @@ const typeDefs = gql`
     myApiKeys: [ApiKey!]!
     apiKey(id: ID!): ApiKey
 
+    # Wallet Migration queries
+    walletMigrationStatus: WalletMigrationStatusResponse
+
     # Admin queries
     allUsers: [User!]!
     allWallets: [Wallet!]!
@@ -924,6 +932,7 @@ const typeDefs = gql`
     # User mutations
     register(username: String!, email: String, password: String!): AuthResponse!
     login(username: String!, password: String!): AuthResponse!
+    authenticateWithWallet(walletAddress: String!, email: String): AuthResponse!
     createWallet(password: String!, chainId: Int = 3888): Wallet!
     importWallet(privateKey: String!, password: String!, chainId: Int = 3888): Wallet!
 
@@ -974,6 +983,55 @@ const typeDefs = gql`
 
     # Fairlaunch mutations (blockchain-first only)
     saveFairlaunchAfterDeployment(input: FairlaunchDeploymentInput!): FairlaunchProject!
+
+    # Wallet Migration mutations
+    linkThirdwebWallet(thirdwebAddress: String!): MutationResult!
+    startWalletMigration(oldWalletId: ID!, newWalletAddress: String!): WalletMigration!
+    migrateNativeTokens(password: String!, toAddress: String!, chainId: Int, reserveForTokenTransfers: Int): MigrateTxResult!
+    migrateTokens(password: String!, toAddress: String!, tokenAddresses: [String!]!, chainId: Int): MigrateTokensResult!
+    completeWalletMigration: MutationResult!
+    optOutWalletMigration: MutationResult!
+  }
+
+  # Wallet Migration types
+  enum WalletMigrationStatusEnum {
+    NOT_STARTED
+    IN_PROGRESS
+    COMPLETED
+    OPTED_OUT
+  }
+
+  type WalletMigrationStatusResponse {
+    thirdwebWalletAddress: String
+    walletMigrationStatus: WalletMigrationStatusEnum!
+    walletMigratedAt: String
+    wallets: [Wallet!]!
+    walletMigrations: [WalletMigration!]!
+  }
+
+  type WalletMigration {
+    id: ID!
+    userId: String!
+    oldWalletAddress: String!
+    newWalletAddress: String!
+    oldWalletId: String!
+    fundsTransferred: Boolean!
+    tokensTransferred: Boolean!
+    positionsTransferred: Boolean!
+    completedAt: String
+    createdAt: String!
+  }
+
+  type MutationResult {
+    success: Boolean!
+  }
+
+  type MigrateTxResult {
+    txHash: String!
+  }
+
+  type MigrateTokensResult {
+    txHashes: [String!]!
   }
 `;
 
@@ -992,5 +1050,6 @@ export const schema = makeExecutableSchema({
     fairlaunchResolvers,
     multichainResolvers,
     swapResolvers,
+    migrationResolvers,
   ],
 });
