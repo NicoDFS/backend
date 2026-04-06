@@ -25,6 +25,7 @@ export interface FairlaunchDeploymentData {
   fairlaunchEnd: string;   // ISO string, will be converted to DateTime
   isWhitelist: boolean;
   referrer?: string;
+  dexVersion?: string; // "v2" or "v3", defaults to "v2"
 
   // Required Blockchain Data
   contractAddress: string;
@@ -57,6 +58,7 @@ type FairlaunchProject = {
   fairlaunchEnd: Date;
   isWhitelist: boolean;
   referrer: string | null;
+  dexVersion: string;
   contractAddress: string;
   transactionHash: string;
   blockNumber: number;
@@ -139,6 +141,7 @@ export const FairlaunchService = {
           fairlaunchEnd,
           isWhitelist: data.isWhitelist,
           referrer: data.referrer || null,
+          dexVersion: data.dexVersion || 'v2',
 
           // Blockchain Data
           contractAddress: data.contractAddress,
@@ -199,6 +202,7 @@ export const FairlaunchService = {
         fairlaunchEnd: fairlaunch.fairlaunchEnd,
         isWhitelist: fairlaunch.isWhitelist,
         referrer: fairlaunch.referrer,
+        dexVersion: fairlaunch.dexVersion,
         contractAddress: fairlaunch.contractAddress,
         transactionHash: fairlaunch.transactionHash,
         blockNumber: fairlaunch.blockNumber,
@@ -249,6 +253,7 @@ export const FairlaunchService = {
         fairlaunchEnd: fairlaunch.fairlaunchEnd,
         isWhitelist: fairlaunch.isWhitelist,
         referrer: fairlaunch.referrer,
+        dexVersion: fairlaunch.dexVersion,
         contractAddress: fairlaunch.contractAddress,
         transactionHash: fairlaunch.transactionHash,
         blockNumber: fairlaunch.blockNumber,
@@ -299,6 +304,7 @@ export const FairlaunchService = {
         fairlaunchEnd: fairlaunch.fairlaunchEnd,
         isWhitelist: fairlaunch.isWhitelist,
         referrer: fairlaunch.referrer,
+        dexVersion: fairlaunch.dexVersion,
         contractAddress: fairlaunch.contractAddress,
         transactionHash: fairlaunch.transactionHash,
         blockNumber: fairlaunch.blockNumber,
@@ -350,6 +356,7 @@ export const FairlaunchService = {
         fairlaunchEnd: fairlaunch.fairlaunchEnd,
         isWhitelist: fairlaunch.isWhitelist,
         referrer: fairlaunch.referrer,
+        dexVersion: fairlaunch.dexVersion,
         contractAddress: fairlaunch.contractAddress,
         transactionHash: fairlaunch.transactionHash,
         blockNumber: fairlaunch.blockNumber,

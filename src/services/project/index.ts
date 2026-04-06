@@ -28,12 +28,13 @@ export interface ProjectDeploymentData {
   presaleEnd: string;   // ISO string, will be converted to DateTime
   lpLockDuration: string;
   lpRecipient?: string;
+  dexVersion?: string; // "v2" or "v3", defaults to "v2"
 
   // Required Blockchain Data
   contractAddress: string;
   transactionHash: string;
   blockNumber: number;
-  
+
   // User context
   userId: string;
 }
@@ -62,6 +63,7 @@ export interface Project {
   presaleEnd: Date;
   lpLockDuration: string;
   lpRecipient?: string;
+  dexVersion: string;
   contractAddress: string;
   transactionHash: string;
   blockNumber: number;
@@ -141,6 +143,7 @@ export const ProjectService = {
           presaleEnd,
           lpLockDuration: data.lpLockDuration,
           lpRecipient: data.lpRecipient || null,
+          dexVersion: data.dexVersion || 'v2',
 
           // Blockchain Data
           contractAddress: data.contractAddress,
@@ -182,6 +185,7 @@ export const ProjectService = {
         presaleEnd: project.presaleEnd,
         lpLockDuration: project.lpLockDuration,
         lpRecipient: project.lpRecipient || undefined,
+        dexVersion: project.dexVersion,
         contractAddress: project.contractAddress,
         transactionHash: project.transactionHash,
         blockNumber: project.blockNumber,
@@ -235,6 +239,7 @@ export const ProjectService = {
         presaleEnd: project.presaleEnd,
         lpLockDuration: project.lpLockDuration,
         lpRecipient: project.lpRecipient || undefined,
+        dexVersion: project.dexVersion,
         contractAddress: project.contractAddress,
         transactionHash: project.transactionHash,
         blockNumber: project.blockNumber,
@@ -288,6 +293,7 @@ export const ProjectService = {
         presaleEnd: project.presaleEnd,
         lpLockDuration: project.lpLockDuration,
         lpRecipient: project.lpRecipient || undefined,
+        dexVersion: project.dexVersion,
         contractAddress: project.contractAddress,
         transactionHash: project.transactionHash,
         blockNumber: project.blockNumber,
@@ -341,6 +347,7 @@ export const ProjectService = {
         presaleEnd: project.presaleEnd,
         lpLockDuration: project.lpLockDuration,
         lpRecipient: project.lpRecipient || undefined,
+        dexVersion: project.dexVersion,
         contractAddress: project.contractAddress,
         transactionHash: project.transactionHash,
         blockNumber: project.blockNumber,
@@ -395,6 +402,7 @@ export const ProjectService = {
         presaleEnd: project.presaleEnd,
         lpLockDuration: project.lpLockDuration,
         lpRecipient: project.lpRecipient || undefined,
+        dexVersion: project.dexVersion,
         contractAddress: project.contractAddress,
         transactionHash: project.transactionHash,
         blockNumber: project.blockNumber,
