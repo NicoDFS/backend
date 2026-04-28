@@ -1,8 +1,12 @@
 # KalySwap Mobile API Documentation
 
+**Last Updated**: April 7, 2026
+
 ## Overview
 
 This document provides comprehensive API documentation for mobile developers to integrate with the KalySwap backend. The API uses GraphQL with **JWT authentication** for secure mobile app access.
+
+> **Important**: The internal wallet system (createWallet, importWallet, password-based signing) is **deprecated**. New integrations must use **Thirdweb in-app wallets**. See `THIRDWEB_MOBILE_INTEGRATION.md` for the full migration guide.
 
 ## Base URL
 
@@ -13,32 +17,47 @@ Development: http://localhost:3000/api/graphql
 
 ## Subgraph Endpoints
 
-For direct subgraph access (without GraphiQL interface):
+For direct subgraph access (POST requests with GraphQL body):
 
 ```
-DEX Subgraph: https://app.kalyswap.io/subgraphs/name/kalyswap/dex-subgraph
-Farming Subgraph: https://app.kalyswap.io/subgraphs/name/kalyswap/farming-subgraph
+V2 DEX Subgraph:     https://app.kalyswap.io/subgraphs/name/kalyswap/dex-subgraph
+Farming Subgraph:    https://app.kalyswap.io/subgraphs/name/kalyswap/farming-subgraph
+V3 DEX Subgraph:     <set via NEXT_PUBLIC_V3_MAINNET_SUBGRAPH_URL>
 ```
 
-**Note**: These endpoints accept POST requests with GraphQL queries in the request body.
+See `V3_DEX_SUBGRAPH.md` for V3 subgraph query examples and contract addresses.
 
 ## Authentication
 
-### 🔐 JWT Authentication (Recommended for Mobile Apps)
+### 🔐 Thirdweb Wallet Authentication (Recommended)
 
-Mobile apps should use JWT (JSON Web Token) authentication for secure, user-specific access:
+New mobile apps should use Thirdweb in-app wallets for authentication. After connecting with Thirdweb SDK, authenticate with the backend:
 
+```graphql
+mutation {
+  authenticateWithWallet(walletAddress: "0x...") {
+    token    # JWT token for subsequent requests
+    user { id username email }
+  }
+}
+```
+
+Include the JWT in all authenticated requests:
 ```
 Authorization: Bearer <jwt_token>
 ```
 
-### 🔑 How to Get JWT Tokens
+See `THIRDWEB_MOBILE_INTEGRATION.md` for full Thirdweb setup instructions.
+
+### 🔑 Legacy Authentication (Deprecated)
+
+> **Deprecated**: Username/password login still works for existing users but should not be used in new code.
 
 1. **User Registration** (returns JWT token):
 ```graphql
 mutation {
   register(username: "user", email: "user@example.com", password: "password") {
-    token    # Use this JWT token for authenticated requests
+    token
     user { id username email }
   }
 }
@@ -48,7 +67,7 @@ mutation {
 ```graphql
 mutation {
   login(username: "user", password: "password") {
-    token    # Use this JWT token for authenticated requests
+    token
     user { id username email }
   }
 }
@@ -157,9 +176,12 @@ Authorization: Bearer <jwt_token>
 
 ### 2. Wallet Management
 
-#### Create New Wallet
+> **Note**: Wallet creation and key management is now handled by the **Thirdweb SDK** on the client side. The mutations below are **deprecated** and only exist for backward compatibility with existing internal wallets. See `THIRDWEB_MOBILE_INTEGRATION.md` for the new wallet flow.
+
+#### ~~Create New Wallet~~ (DEPRECATED)
 
 ```graphql
+# DEPRECATED — Use Thirdweb in-app wallet instead
 mutation CreateWallet($password: String!) {
   createWallet(password: $password) {
     id
@@ -171,14 +193,10 @@ mutation CreateWallet($password: String!) {
 }
 ```
 
-**Headers Required:**
-```
-Authorization: Bearer <jwt_token>
-```
-
-#### Import Existing Wallet
+#### ~~Import Existing Wallet~~ (DEPRECATED)
 
 ```graphql
+# DEPRECATED — Use Thirdweb in-app wallet instead
 mutation ImportWallet($privateKey: String!, $password: String!) {
   importWallet(privateKey: $privateKey, password: $password) {
     id
@@ -190,25 +208,16 @@ mutation ImportWallet($privateKey: String!, $password: String!) {
 }
 ```
 
-**Headers Required:**
-```
-Authorization: Bearer <jwt_token>
-```
-
-#### Export Wallet
+#### ~~Export Wallet~~ (DEPRECATED)
 
 ```graphql
+# DEPRECATED — Use Thirdweb in-app wallet instead
 query ExportWallet($walletId: ID!, $password: String!) {
   exportWallet(walletId: $walletId, password: $password) {
     keystore
     privateKey
   }
 }
-```
-
-**Headers Required:**
-```
-Authorization: Bearer <jwt_token>
 ```
 
 #### Get Wallet Balance
@@ -503,9 +512,16 @@ const dexDataResponse = await fetch('https://app.kalyswap.io/api/graphql', {
 });
 ```
 
+## Related Documentation
+
+- **`V3_DEX_SUBGRAPH.md`** — V3 contract addresses, subgraph endpoints, and pool queries
+- **`THIRDWEB_MOBILE_INTEGRATION.md`** — Thirdweb in-app wallet setup for mobile (React Native, iOS, Android)
+- **`V3_STABLECOIN_POOLS.md`** — Stablecoin pool creation plan and configuration checklist
+- **`MULTICHAIN_SWAP_API.md`** — Multichain swap quote API for KalyChain, BSC, and Arbitrum
+
 ## Support
 
 For API support and questions:
-- Documentation: This file
+- Documentation: This file and related docs above
 - GraphQL Playground: Available at `/api/graphql` in development
 - Contact: Your development team

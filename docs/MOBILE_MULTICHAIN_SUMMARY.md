@@ -1,8 +1,12 @@
 # Mobile Multichain Swap Support - Implementation Summary
 
+**Last Updated**: April 7, 2026
+
 ## Status: ✅ COMPLETE
 
-The backend now has full multichain swap support for mobile applications.
+The backend has full multichain swap support for mobile applications.
+
+> **Note (April 2026)**: Transaction execution now uses **Thirdweb in-app wallets** for client-side signing instead of the deprecated `sendContractTransaction` mutation. The swap quote API is unchanged. See `THIRDWEB_MOBILE_INTEGRATION.md` for wallet setup.
 
 ---
 
@@ -164,6 +168,7 @@ These features are NOT required for basic swap functionality but could be added 
 3. **Transaction History** - Mobile can use blockchain explorers
 4. **Multi-hop Route Optimization** - Currently supports max 2-hop routes (through WETH)
 5. **Gas Estimation** - Mobile can estimate gas using standard RPC calls
+6. **V3 Swap Quotes** - V3 concentrated liquidity quotes (currently V2 router only)
 
 ---
 

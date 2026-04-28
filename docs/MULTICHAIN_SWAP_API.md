@@ -1,12 +1,16 @@
 # Multichain Swap API Documentation
 
+**Last Updated**: April 7, 2026
+
 ## Overview
 
-The KalySwap backend now supports multichain swap quotes for mobile applications. This allows mobile developers to get swap quotes and execute swaps on:
+The KalySwap backend supports multichain swap quotes for mobile applications. This allows mobile developers to get swap quotes and execute swaps on:
 
 - **KalyChain** (Chain ID: 3888)
 - **BNB Smart Chain** (Chain ID: 56)
 - **Arbitrum One** (Chain ID: 42161)
+
+> **Note (April 2026)**: Swap execution (Step 3 below) now uses **Thirdweb in-app wallets** for client-side transaction signing. The `sendContractTransaction` mutation is **deprecated**. Swap quotes (Steps 1-2) are unchanged. See `THIRDWEB_MOBILE_INTEGRATION.md` for the new wallet integration.
 
 ## GraphQL Endpoint
 
@@ -211,28 +215,16 @@ const data = router.encodeFunctionData('swapExactETHForTokens', [
 
 ### Step 2: Send Transaction
 
+**New method (Thirdweb):** Sign and send the transaction client-side using the Thirdweb SDK. See `THIRDWEB_MOBILE_INTEGRATION.md` for details.
+
+**Deprecated method (internal wallet):**
 ```graphql
+# DEPRECATED — use Thirdweb SDK for client-side signing instead
 mutation ExecuteSwap($input: SendContractTransactionInput!) {
   sendContractTransaction(input: $input) {
     hash
     status
     message
-  }
-}
-```
-
-### Variables
-
-```json
-{
-  "input": {
-    "walletId": "user-wallet-id",
-    "toAddress": "0x10ED43C718714eb63d5aA57B78B54704E256024E",
-    "value": "0",
-    "data": "0x38ed1739...",
-    "password": "user-password",
-    "chainId": 56,
-    "gasLimit": "200000"
   }
 }
 ```

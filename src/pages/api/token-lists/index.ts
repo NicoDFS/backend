@@ -18,6 +18,7 @@ const setCorsHeaders = (res: NextApiResponse, origin: string) => {
     'http://localhost:3001', // Admin panel (local)
     'http://localhost:3002', // Frontend (local)
     'http://localhost:3000', // Backend (for testing)
+    'http://localhost:8081', // Expo / React Native web (local)
     'https://app.kalyswap.io', // Main app
     'https://kalyswap.io', // Main website
     'https://admin.kalyswap.io' // Admin panel (production)

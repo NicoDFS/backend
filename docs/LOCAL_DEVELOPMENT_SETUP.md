@@ -16,11 +16,11 @@ Before starting, ensure you have the following installed:
 ## Quick Setup Overview
 
 1. Clone repository and install dependencies
-2. Set up environment variables
+2. Set up environment variables (including Thirdweb keys)
 3. Start database and Redis services
 4. Set up and run Prisma database
 5. Start Graph Node for subgraphs
-6. Deploy subgraphs (⚠️ **2-day sync time**)
+6. Deploy subgraphs — V2 (⚠️ **2-day sync**) and V3
 7. Start backend server
 
 ## Detailed Setup Instructions
@@ -55,6 +55,14 @@ NEXT_PUBLIC_API_URL="http://localhost:3000/api"
 
 # JWT Secret (generate a secure random string)
 JWT_SECRET="your-super-secure-jwt-secret-here"
+JWT_EXPIRES_IN="7d"
+
+# Thirdweb Configuration (required for wallet auth)
+NEXT_PUBLIC_THIRDWEB_CLIENT_ID="f4ce05ebc56f222fd4d5f23f9bb1587e"
+NEXT_PUBLIC_THIRDWEB_SECRET_KEY="<get from team>"
+
+# V3 Subgraph (set after deploying V3 subgraph locally)
+NEXT_PUBLIC_V3_MAINNET_SUBGRAPH_URL="http://127.0.0.1:8000/subgraphs/name/v3-subgraph-kalychain"
 
 # Optional: SMTP Configuration for alerts
 SMTP_HOST="smtp.example.com"
@@ -151,6 +159,28 @@ npm run create-local
 npm run deploy-local
 ```
 
+#### Deploy V3 DEX Subgraph
+```bash
+# From repository root
+cd v3-subgraph
+
+# Install dependencies
+npm install
+
+# Build for mainnet
+npm run build -- --network kalychain --subgraph-type v3
+
+# Create and deploy
+npx graph create --node http://127.0.0.1:8020 v3-subgraph-kalychain
+npx graph deploy \
+  --node http://127.0.0.1:8020 \
+  --ipfs http://127.0.0.1:5001 \
+  --version-label v0.0.1 \
+  v3-subgraph-kalychain v3-subgraph.yaml
+```
+
+> **Note**: After creating the first wKLC/stablecoin V3 pool, update `STABLE_TOKEN_POOL` in `v3-subgraph/config/kalychain-mainnet/chain.ts` and redeploy. See `V3_STABLECOIN_POOLS.md` for details.
+
 #### Deploy Other Subgraphs (Optional)
 ```bash
 # Staking Subgraph
@@ -194,10 +224,15 @@ curl -X POST http://localhost:3000/api/graphql \
 
 ### Test Subgraph Endpoints
 ```bash
-# DEX Subgraph
+# V2 DEX Subgraph
 curl -X POST http://localhost:8000/subgraphs/name/kalyswap/dex-subgraph \
   -H "Content-Type: application/json" \
   -d '{"query": "query { pairs(first: 1) { id } }"}'
+
+# V3 DEX Subgraph
+curl -X POST http://localhost:8000/subgraphs/name/v3-subgraph-kalychain \
+  -H "Content-Type: application/json" \
+  -d '{"query": "query { pools(first: 1) { id token0 { symbol } token1 { symbol } feeTier } }"}'
 
 # Farming Subgraph
 curl -X POST http://localhost:8000/subgraphs/name/kalyswap/farming-subgraph \
@@ -260,15 +295,16 @@ cd subgraphs && docker-compose up -d
 ## Development Status
 
 🚧 **Active Development Areas**:
-- DEX functionality and pricing
-- LP farming integration
-- Bridge implementation
-- Mobile API optimization
-- Database schema changes
+- V3 DEX concentrated liquidity pools
+- V3 stablecoin pool deployment
+- Thirdweb in-app wallet integration (replacing internal wallets)
+- V3 farming/staking incentives
+- Mobile app Thirdweb integration
 
 📋 **Known Issues**:
-- Subgraph sync is very slow (2+ days)
-- Some API endpoints may return placeholder data
+- V2 subgraph sync is very slow (2+ days)
+- V3 subgraph requires `STABLE_TOKEN_POOL` to be set for USD pricing
+- Internal wallet mutations are deprecated — use Thirdweb
 - Database migrations may change frequently
 
 ## Support
@@ -281,5 +317,5 @@ For development issues:
 
 ---
 
-**Last Updated**: July 31, 2025
-**Backend Version**: 0.1.0 (Development)
+**Last Updated**: April 7, 2026
+**Backend Version**: 0.2.0 (Development)
