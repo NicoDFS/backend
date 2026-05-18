@@ -125,12 +125,30 @@ export class UserService implements IUserService {
   async authenticateWithWallet(walletAddress: string, email?: string): Promise<{ token: string; user: User }> {
     const normalizedAddress = walletAddress.toLowerCase();
 
-    // Try to find existing user by thirdweb wallet address
+    // Find an existing user by thirdweb wallet address OR by the username we
+    // derive from the wallet address. The username match catches legacy rows
+    // created before thirdwebWalletAddress was populated — without it those
+    // rows are invisible here and the create below collides on the unique
+    // username constraint.
     let user = await prisma.user.findFirst({
-      where: { thirdwebWalletAddress: normalizedAddress },
+      where: {
+        OR: [
+          { thirdwebWalletAddress: normalizedAddress },
+          { username: normalizedAddress },
+        ],
+      },
     });
 
-    if (!user) {
+    if (user) {
+      // Backfill thirdwebWalletAddress on legacy rows so future logins hit the
+      // fast path and never reach the create branch.
+      if (user.thirdwebWalletAddress !== normalizedAddress) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { thirdwebWalletAddress: normalizedAddress },
+        });
+      }
+    } else {
       // Auto-create user — random password (user authenticates via wallet, never needs it)
       const salt = PasswordUtils.generateSalt();
       const randomPassword = crypto.randomBytes(32).toString('hex');
@@ -147,13 +165,33 @@ export class UserService implements IUserService {
           },
         });
       } catch (err: any) {
-        // Handle race condition — username or email unique constraint violation
+        // Unique constraint violation — could be a concurrent request that
+        // created the row, or the supplied email already belongs to another
+        // account. Recover by field.
         if (err?.code === 'P2002') {
+          const conflictFields: string[] = err?.meta?.target ?? [];
+
+          // Re-check for a row matching this wallet (created by a concurrent
+          // request, or pre-existing under the same username).
           user = await prisma.user.findFirst({
-            where: { thirdwebWalletAddress: normalizedAddress },
+            where: {
+              OR: [
+                { thirdwebWalletAddress: normalizedAddress },
+                { username: normalizedAddress },
+              ],
+            },
           });
-          if (!user) {
-            // Email conflict — retry without email
+
+          if (user) {
+            if (user.thirdwebWalletAddress !== normalizedAddress) {
+              user = await prisma.user.update({
+                where: { id: user.id },
+                data: { thirdwebWalletAddress: normalizedAddress },
+              });
+            }
+          } else if (conflictFields.includes('email')) {
+            // The email belongs to a different account — create the wallet
+            // user without it rather than failing the login.
             user = await prisma.user.create({
               data: {
                 username: normalizedAddress,
@@ -162,6 +200,8 @@ export class UserService implements IUserService {
                 thirdwebWalletAddress: normalizedAddress,
               },
             });
+          } else {
+            throw err;
           }
         } else {
           throw err;
