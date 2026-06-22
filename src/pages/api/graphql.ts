@@ -59,23 +59,27 @@ const setCorsHeaders = (res: any, origin: string) => {
     'http://localhost:3000', // Backend (for testing)
     'https://kalyswap.localhost', // Frontend (local, via portless)
     'https://admin.kalyswap.localhost', // Admin panel (local, via portless)
+    'http://localhost:8081', // Expo / React Native web (local)
     'https://app.kalyswap.io', // Main app
     'https://kalyswap.io', // Main website
     'https://admin.kalyswap.io' // Admin panel (production)
   ];
 
-  // If origin is provided and allowed, use it
   if (origin && allowedOrigins.includes(origin)) {
+    // Known web origin — reflect it back
     res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  // If no origin (server-to-server, same-origin, etc.), allow localhost:3001 by default
-  else if (!origin) {
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3001');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (!origin) {
+    // No origin: native mobile apps, server-to-server, curl, etc.
+    // Use wildcard — these clients don't need credentials via CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else {
+    // Unknown web origin — allow but without credentials
+    res.setHeader('Access-Control-Allow-Origin', origin);
   }
 
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
 };
 
 export default async (req: any, res: any) => {

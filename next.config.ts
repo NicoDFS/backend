@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
     // Allow production builds to complete even if there are TypeScript errors
     ignoreBuildErrors: true,
   },
+  productionBrowserSourceMaps: false,
+  experimental: {
+    cpus: 1,
+    workerThreads: false,
+  },
 };
 
 export default nextConfig;
