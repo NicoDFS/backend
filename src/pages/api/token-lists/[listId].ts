@@ -9,6 +9,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 const TOKEN_LIST_URLS: Record<string, string> = {
   'kalyswap-default': 'https://raw.githubusercontent.com/KalyCoinProject/tokenlists/refs/heads/main/kalyswap.tokenlist.json',
   'pancakeswap-extended': 'https://tokens.pancakeswap.finance/pancakeswap-extended.json',
+  'camelot-arbitrum': 'https://raw.githubusercontent.com/CamelotLabs/default-token-list/main/src/tokens/arbitrum-one.json',
   'uniswap-default': 'https://tokens.uniswap.org'
 };
 
@@ -97,7 +98,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const tokenList = await response.json();
+    const fetched = await response.json();
+
+    // Some official lists (e.g. Camelot) publish a bare array of tokens
+    // instead of a wrapped { name, version, tokens } object. Normalize so
+    // this endpoint always returns the Uniswap token-list shape.
+    const tokenList = Array.isArray(fetched)
+      ? { name: listId, version: { major: 1, minor: 0, patch: 0 }, timestamp: new Date(0).toISOString(), tokens: fetched }
+      : fetched;
 
     // Validate basic structure
     if (!tokenList || !tokenList.tokens || !Array.isArray(tokenList.tokens)) {

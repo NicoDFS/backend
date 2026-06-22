@@ -9,6 +9,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 const TOKEN_LIST_URLS: Record<string, string> = {
   'kalyswap-default': 'https://raw.githubusercontent.com/KalyCoinProject/tokenlists/refs/heads/main/kalyswap.tokenlist.json',
   'pancakeswap-extended': 'https://tokens.pancakeswap.finance/pancakeswap-extended.json',
+  'camelot-arbitrum': 'https://raw.githubusercontent.com/CamelotLabs/default-token-list/main/src/tokens/arbitrum-one.json',
   'uniswap-default': 'https://tokens.uniswap.org'
 };
 
@@ -62,6 +63,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       examples: [
         '/api/token-lists/kalyswap-default',
         '/api/token-lists/pancakeswap-extended',
+        '/api/token-lists/camelot-arbitrum',
         '/api/token-lists/uniswap-default'
       ]
     }

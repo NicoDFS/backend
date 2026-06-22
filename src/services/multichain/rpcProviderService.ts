@@ -51,7 +51,7 @@ export class MultiRPCProviderService {
       name: 'BNB Smart Chain',
       symbol: 'BNB',
       decimals: 18,
-      rpcUrl: 'https://bsc.nownodes.io/38c9312e-ab3b-43cc-9f00-da2b23125a28',
+      rpcUrl: process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org',
       blockExplorer: 'https://bscscan.com',
       isTestnet: false
     });
@@ -62,7 +62,7 @@ export class MultiRPCProviderService {
       name: 'Arbitrum One',
       symbol: 'ETH',
       decimals: 18,
-      rpcUrl: 'https://arbitrum.nownodes.io/38c9312e-ab3b-43cc-9f00-da2b23125a28',
+      rpcUrl: process.env.ARBITRUM_RPC_URL || 'https://arb1.arbitrum.io/rpc',
       blockExplorer: 'https://arbiscan.io',
       isTestnet: false
     });
