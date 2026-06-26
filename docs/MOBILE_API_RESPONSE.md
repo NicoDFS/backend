@@ -1,23 +1,22 @@
 # KalySwap Mobile API - Issue Resolution
 
+**Last Updated**: April 7, 2026
+
 ## Status: ✅ RESOLVED
 
-Thank you for reporting the API accessibility issues. I've identified and resolved the problems. The APIs are working correctly, but there were incorrect URLs in the documentation.
+API accessibility issues were resolved. Correct endpoint URLs are documented below.
+
+> **Important Update (April 2026)**: The internal wallet system is **deprecated**. New mobile integrations should use **Thirdweb in-app wallets**. See `THIRDWEB_MOBILE_INTEGRATION.md` for setup instructions.
 
 ## Corrected API Endpoints
 
 ### Main GraphQL API
-- **❌ Incorrect URL**: `https://kalyswap.io/api/graphql` (returns 404)
 - **✅ Correct URL**: `https://app.kalyswap.io/api/graphql`
 
 ### Subgraph Endpoints
-- **❌ Incorrect URLs**: 
-  - `https://app.kalyswap.io/subgraphs/name/kalyswap/dex-subgraph/graphql` (GraphiQL interface)
-  - `https://app.kalyswap.io/subgraphs/name/kalyswap/farming-subgraph/graphql` (GraphiQL interface)
-
-- **✅ Correct URLs**:
-  - DEX Subgraph: `https://app.kalyswap.io/subgraphs/name/kalyswap/dex-subgraph`
-  - Farming Subgraph: `https://app.kalyswap.io/subgraphs/name/kalyswap/farming-subgraph`
+- **V2 DEX Subgraph**: `https://app.kalyswap.io/subgraphs/name/kalyswap/dex-subgraph`
+- **Farming Subgraph**: `https://app.kalyswap.io/subgraphs/name/kalyswap/farming-subgraph`
+- **V3 DEX Subgraph**: Set via `NEXT_PUBLIC_V3_MAINNET_SUBGRAPH_URL` (see `V3_DEX_SUBGRAPH.md`)
 
 ## Verification Tests
 
@@ -103,14 +102,16 @@ const getTradingPairs = async () => {
 ## Available Data
 
 ### Main GraphQL API Features
-- ✅ User authentication (JWT)
-- ✅ Wallet management
+- ✅ User authentication (JWT via Thirdweb wallet or legacy password)
+- ✅ Wallet migration (internal wallet → Thirdweb)
 - ✅ Transaction tracking
 - ✅ DEX overview data
 - ✅ Token information
+- ✅ Multichain swap quotes (KalyChain, BSC, Arbitrum)
 
 ### Subgraph Data Available
-- ✅ **DEX Subgraph**: Trading pairs, tokens, liquidity, volume data
+- ✅ **V2 DEX Subgraph**: Trading pairs, tokens, liquidity, volume data
+- ✅ **V3 DEX Subgraph**: Concentrated liquidity pools, positions, ticks, swaps
 - ✅ **Farming Subgraph**: LP farming pools, rewards, staking data
 
 ## Next Steps

@@ -6,8 +6,40 @@ export interface ChainInfo {
   symbol: string;
   decimals: number;
   rpcUrl: string;
+  /** Extra HTTP headers for the RPC request (e.g. thirdweb x-secret-key). */
+  rpcHeaders?: Record<string, string>;
   blockExplorer: string;
   isTestnet: boolean;
+}
+
+// thirdweb is our paid RPC provider for external chains (Arbitrum, BSC).
+// Server-side requests have no browser origin, so they authenticate with the
+// thirdweb SECRET key via the x-secret-key header. NowNodes is NOT used here —
+// the standalone Hyperlane bridge infrastructure has its own separate setup.
+const THIRDWEB_CLIENT_ID = process.env.THIRDWEB_CLIENT_ID || '';
+const THIRDWEB_SECRET_KEY = process.env.THIRDWEB_SECRET_KEY || '';
+
+/**
+ * Resolve the RPC url + headers for an external chain. Priority:
+ *   1. Explicit env override (<CHAIN>_RPC_URL) — used as-is, no extra headers.
+ *   2. thirdweb (paid) when the client id + secret key are configured.
+ *   3. Public endpoint as a last-resort fallback.
+ */
+function resolveExternalRpc(
+  chainId: number,
+  envUrl: string | undefined,
+  publicUrl: string
+): { rpcUrl: string; rpcHeaders?: Record<string, string> } {
+  if (envUrl) {
+    return { rpcUrl: envUrl };
+  }
+  if (THIRDWEB_CLIENT_ID && THIRDWEB_SECRET_KEY) {
+    return {
+      rpcUrl: `https://${chainId}.rpc.thirdweb.com/${THIRDWEB_CLIENT_ID}`,
+      rpcHeaders: { 'x-secret-key': THIRDWEB_SECRET_KEY },
+    };
+  }
+  return { rpcUrl: publicUrl };
 }
 
 export interface TokenInfo {
@@ -45,24 +77,24 @@ export class MultiRPCProviderService {
       isTestnet: false
     });
 
-    // BSC configuration
+    // BSC configuration (thirdweb paid RPC, public fallback)
     this.chainConfigs.set(56, {
       chainId: 56,
       name: 'BNB Smart Chain',
       symbol: 'BNB',
       decimals: 18,
-      rpcUrl: process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org',
+      ...resolveExternalRpc(56, process.env.BSC_RPC_URL, 'https://bsc-dataseed.binance.org'),
       blockExplorer: 'https://bscscan.com',
       isTestnet: false
     });
 
-    // Arbitrum configuration
+    // Arbitrum configuration (thirdweb paid RPC, public fallback)
     this.chainConfigs.set(42161, {
       chainId: 42161,
       name: 'Arbitrum One',
       symbol: 'ETH',
       decimals: 18,
-      rpcUrl: process.env.ARBITRUM_RPC_URL || 'https://arb1.arbitrum.io/rpc',
+      ...resolveExternalRpc(42161, process.env.ARBITRUM_RPC_URL, 'https://arb1.arbitrum.io/rpc'),
       blockExplorer: 'https://arbiscan.io',
       isTestnet: false
     });
@@ -77,6 +109,7 @@ export class MultiRPCProviderService {
         const provider = new ethers.providers.JsonRpcProvider({
           url: config.rpcUrl,
           timeout: 30000, // 30 second timeout
+          ...(config.rpcHeaders ? { headers: config.rpcHeaders } : {}),
         });
 
         // Set network info to avoid auto-detection
