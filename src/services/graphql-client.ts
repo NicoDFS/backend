@@ -1,18 +1,16 @@
 import { GraphQLClient } from 'graphql-request';
 
-// Default to localhost for development
+// Graph node that indexes KalyChain (chain "kmt" on the kswap graph-node).
 const GRAPH_NODE_URL = process.env.GRAPH_NODE_URL || 'http://localhost:8000';
 
-// Map of service names to subgraph endpoints
+// Subgraphs this backend reads. Names follow the existing kmt deployments
+// (v3-subgraph-kmt, vault-subgraph-kmt, kusd-subgraph-kmt). No V2 dex/farm subgraph exists on 3890.
 const subgraphEndpoints: Record<string, string> = {
-  dex: `${GRAPH_NODE_URL}/subgraphs/name/kalyswap/dex-subgraph`,
-  bridge: `${GRAPH_NODE_URL}/subgraphs/name/kalyswap/bridge-subgraph`,
-  launchpad: `${GRAPH_NODE_URL}/subgraphs/name/kalyswap/launchpad-subgraph`,
-  staking: `${GRAPH_NODE_URL}/subgraphs/name/kalyswap/staking-subgraph`,
-  farm: `${GRAPH_NODE_URL}/subgraphs/name/kalyswap/farming-subgraph`,
+  bridge: `${GRAPH_NODE_URL}/subgraphs/name/bridge-subgraph-kmt`,
+  launchpad: `${GRAPH_NODE_URL}/subgraphs/name/launchpad-subgraph-kmt`,
+  staking: `${GRAPH_NODE_URL}/subgraphs/name/staking-subgraph-kmt`,
 };
 
-// Cache clients to avoid creating new ones for each request
 const clients: Record<string, GraphQLClient> = {};
 
 export function getGraphQLClient(service: string): GraphQLClient {

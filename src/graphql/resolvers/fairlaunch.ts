@@ -1,5 +1,5 @@
 import { FairlaunchService, FairlaunchDeploymentData } from '../../services/fairlaunch';
-import { Context } from '../context';
+import { verifyDeployment } from '../../services/launchpad/deploymentVerifier';
 
 export const fairlaunchResolvers = {
   Query: {
@@ -7,9 +7,8 @@ export const fairlaunchResolvers = {
      * Get all confirmed fairlaunch projects with pagination
      */
     confirmedFairlaunches: async (
-      _: any, 
-      { limit = 10, offset = 0 }: { limit?: number; offset?: number }, 
-      context: Context
+      _: unknown, 
+      { limit = 10, offset = 0 }: { limit?: number; offset?: number }
     ) => {
       try {
         const fairlaunches = await FairlaunchService.getConfirmedFairlaunches(limit, offset);
@@ -20,7 +19,6 @@ export const fairlaunchResolvers = {
           fairlaunchEnd: fairlaunch.fairlaunchEnd.toISOString(),
           deployedAt: fairlaunch.deployedAt.toISOString(),
           createdAt: fairlaunch.createdAt.toISOString(),
-          user: { id: fairlaunch.userId } // Will be resolved by User resolver
         }));
       } catch (error) {
         console.error('Error fetching confirmed fairlaunch projects:', error);
@@ -32,9 +30,8 @@ export const fairlaunchResolvers = {
      * Get a specific confirmed fairlaunch project by ID
      */
     confirmedFairlaunch: async (
-      _: any, 
-      { id }: { id: string }, 
-      context: Context
+      _: unknown, 
+      { id }: { id: string }
     ) => {
       try {
         const fairlaunch = await FairlaunchService.getConfirmedFairlaunch(id);
@@ -49,7 +46,6 @@ export const fairlaunchResolvers = {
           fairlaunchEnd: fairlaunch.fairlaunchEnd.toISOString(),
           deployedAt: fairlaunch.deployedAt.toISOString(),
           createdAt: fairlaunch.createdAt.toISOString(),
-          user: { id: fairlaunch.userId } // Will be resolved by User resolver
         };
       } catch (error) {
         console.error('Error fetching fairlaunch project:', error);
@@ -61,9 +57,8 @@ export const fairlaunchResolvers = {
      * Get a specific confirmed fairlaunch project by contract address
      */
     confirmedFairlaunchByAddress: async (
-      _: any,
-      { contractAddress }: { contractAddress: string },
-      context: Context
+      _: unknown,
+      { contractAddress }: { contractAddress: string }
     ) => {
       try {
         const fairlaunch = await FairlaunchService.getConfirmedFairlaunchByAddress(contractAddress);
@@ -78,7 +73,6 @@ export const fairlaunchResolvers = {
           fairlaunchEnd: fairlaunch.fairlaunchEnd.toISOString(),
           deployedAt: fairlaunch.deployedAt.toISOString(),
           createdAt: fairlaunch.createdAt.toISOString(),
-          user: { id: fairlaunch.userId } // Will be resolved by User resolver
         };
       } catch (error) {
         console.error('Error fetching fairlaunch project by address:', error);
@@ -87,20 +81,14 @@ export const fairlaunchResolvers = {
     },
 
     /**
-     * Get confirmed fairlaunch projects for the authenticated user
+     * Get confirmed fairlaunch projects deployed by a given address
      */
-    myConfirmedFairlaunches: async (
-      _: any, 
-      { limit = 10, offset = 0 }: { limit?: number; offset?: number }, 
-      context: Context
+    fairlaunchesByOwner: async (
+      _: unknown,
+      { ownerAddress, limit = 10, offset = 0 }: { ownerAddress: string; limit?: number; offset?: number }
     ) => {
       try {
-        // Check if user is authenticated
-        if (!context.user) {
-          throw new Error('Authentication required');
-        }
-
-        const fairlaunches = await FairlaunchService.getUserConfirmedFairlaunches(context.user.id, limit, offset);
+        const fairlaunches = await FairlaunchService.getFairlaunchesByOwner(ownerAddress, limit, offset);
         
         return fairlaunches.map(fairlaunch => ({
           ...fairlaunch,
@@ -108,11 +96,10 @@ export const fairlaunchResolvers = {
           fairlaunchEnd: fairlaunch.fairlaunchEnd.toISOString(),
           deployedAt: fairlaunch.deployedAt.toISOString(),
           createdAt: fairlaunch.createdAt.toISOString(),
-          user: { id: fairlaunch.userId } // Will be resolved by User resolver
         }));
       } catch (error) {
-        console.error('Error fetching user fairlaunch projects:', error);
-        throw new Error('Failed to fetch user fairlaunch projects');
+        console.error('Error fetching fairlaunches by owner:', error);
+        throw new Error('Failed to fetch fairlaunches by owner');
       }
     }
   },
@@ -123,26 +110,18 @@ export const fairlaunchResolvers = {
      * This is the ONLY way fairlaunch projects get saved to the database
      */
     saveFairlaunchAfterDeployment: async (
-      _: any, 
-      { input }: { input: FairlaunchDeploymentData }, 
-      context: Context
+      _: unknown, 
+      { input }: { input: Omit<FairlaunchDeploymentData, 'ownerAddress'> }
     ) => {
       try {
-        // Check if user is authenticated
-        if (!context.user) {
-          throw new Error('Authentication required');
-        }
-
-        // Add user ID to the input data
-        const fairlaunchData: FairlaunchDeploymentData = {
-          ...input,
-          userId: context.user.id
-        };
-
         // Validate required blockchain data
-        if (!fairlaunchData.contractAddress || !fairlaunchData.transactionHash || !fairlaunchData.blockNumber) {
+        if (!input.contractAddress || !input.transactionHash || !input.blockNumber) {
           throw new Error('Blockchain confirmation required: contractAddress, transactionHash, and blockNumber must be provided');
         }
+
+        // Ownership is the deployer of the on-chain tx — nothing else vouches for it
+        const { ownerAddress } = await verifyDeployment(input);
+        const fairlaunchData: FairlaunchDeploymentData = { ...input, ownerAddress };
 
         // Validate required project data
         if (!fairlaunchData.name || !fairlaunchData.description || !fairlaunchData.saleToken || !fairlaunchData.baseToken) {
@@ -157,7 +136,7 @@ export const fairlaunchResolvers = {
         // Save the confirmed fairlaunch project
         const fairlaunch = await FairlaunchService.saveConfirmedFairlaunch(fairlaunchData);
 
-        console.log(`✅ Fairlaunch project saved for user ${context.user.username}: ${fairlaunch.name} (${fairlaunch.contractAddress})`);
+        console.log(`✅ Fairlaunch project saved for ${ownerAddress}: ${fairlaunch.name} (${fairlaunch.contractAddress})`);
 
         return {
           ...fairlaunch,
@@ -165,7 +144,6 @@ export const fairlaunchResolvers = {
           fairlaunchEnd: fairlaunch.fairlaunchEnd.toISOString(),
           deployedAt: fairlaunch.deployedAt.toISOString(),
           createdAt: fairlaunch.createdAt.toISOString(),
-          user: { id: fairlaunch.userId } // Will be resolved by User resolver
         };
       } catch (error) {
         console.error('Error saving fairlaunch project after deployment:', error);
@@ -179,26 +157,4 @@ export const fairlaunchResolvers = {
       }
     }
   },
-
-  // Field resolvers
-  FairlaunchProject: {
-    /**
-     * Resolve the user field for FairlaunchProject type
-     */
-    user: async (parent: any, _: any, context: Context) => {
-      try {
-        // Use the existing user service to get user data
-        if (context.userService) {
-          return await context.userService.getUserById(parent.userId);
-        }
-        
-        // Fallback: return minimal user data
-        return { id: parent.userId };
-      } catch (error) {
-        console.error('Error resolving fairlaunch project user:', error);
-        // Return minimal user data on error
-        return { id: parent.userId };
-      }
-    }
-  }
 };

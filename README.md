@@ -42,7 +42,7 @@ src/
    ```
 3. Create a `.env.local` file with the following variables:
    ```
-   KALYCHAIN_RPC_URL=https://rpc.kalychain.io/rpc
+   KALYCHAIN_RPC_URL=https://mainrpc.kalychain.io/rpc   # chain 3890; switch to the production URL at cut-over
    GRAPH_NODE_URL=http://localhost:8000
    NEXT_PUBLIC_API_URL=http://localhost:3000/api
    ```
@@ -91,7 +91,7 @@ The project uses subgraphs to index blockchain data. We've set up a local Graph 
 
 4. Check the indexing status:
    ```bash
-   curl -X POST http://localhost:8030/graphql -H "Content-Type: application/json" -d '{"query": "{ indexingStatusForCurrentVersion(subgraphName: \"kalyswap/dex-subgraph\") { synced health chains { network latestBlock { number } chainHeadBlock { number } } } }"}'
+   curl -X POST http://localhost:8030/graphql -H "Content-Type: application/json" -d '{"query": "{ indexingStatusForCurrentVersion(subgraphName: \"bridge-subgraph-kmt\") { synced health chains { network latestBlock { number } chainHeadBlock { number } } } }"}'
    ```
 
 #### Staking Subgraph
@@ -125,7 +125,7 @@ The staking subgraph indexes data from the KalyStaking contract at `0xF670A2D32a
 
 6. Query the subgraph:
    ```bash
-   curl -X POST http://localhost:8000/subgraphs/name/kalyswap/staking-subgraph -H "Content-Type: application/json" -d '{"query": "{ stakingPools { id address totalStaked rewardRate } }"}'
+   curl -X POST http://localhost:8000/subgraphs/name/staking-subgraph-kmt -H "Content-Type: application/json" -d '{"query": "{ stakingPools { id address totalStaked rewardRate } }"}'
    ```
 
 ### Admin Dashboard

@@ -25,15 +25,15 @@ export interface FairlaunchDeploymentData {
   fairlaunchEnd: string;   // ISO string, will be converted to DateTime
   isWhitelist: boolean;
   referrer?: string;
-  dexVersion?: string; // "v2" or "v3", defaults to "v2"
+  dexVersion?: string; // "v3" — the only DEX on 3890; kept for schema compatibility
 
   // Required Blockchain Data
   contractAddress: string;
   transactionHash: string;
   blockNumber: number;
 
-  // User ID (added by resolver)
-  userId: string;
+  // Deployer of the sale contract, proven from the tx receipt (lower-cased)
+  ownerAddress: string;
 }
 
 // Type for database operations
@@ -64,7 +64,7 @@ type FairlaunchProject = {
   blockNumber: number;
   deployedAt: Date;
   createdAt: Date;
-  userId: string;
+  ownerAddress: string;
 };
 
 export const FairlaunchService = {
@@ -141,19 +141,14 @@ export const FairlaunchService = {
           fairlaunchEnd,
           isWhitelist: data.isWhitelist,
           referrer: data.referrer || null,
-          dexVersion: data.dexVersion || 'v2',
+          dexVersion: data.dexVersion || 'v3',
 
           // Blockchain Data
           contractAddress: data.contractAddress,
           transactionHash: data.transactionHash,
           blockNumber: data.blockNumber,
           deployedAt,
-
-          // User relation
-          userId: data.userId
-        },
-        include: {
-          user: true
+          ownerAddress: data.ownerAddress
         }
       });
 
@@ -175,9 +170,6 @@ export const FairlaunchService = {
         skip: offset,
         orderBy: {
           createdAt: 'desc'
-        },
-        include: {
-          user: true
         }
       });
 
@@ -208,7 +200,7 @@ export const FairlaunchService = {
         blockNumber: fairlaunch.blockNumber,
         deployedAt: fairlaunch.deployedAt,
         createdAt: fairlaunch.createdAt,
-        userId: fairlaunch.userId
+        ownerAddress: fairlaunch.ownerAddress
       }));
     } catch (error) {
       console.error('❌ Error fetching confirmed fairlaunch projects:', error);
@@ -222,10 +214,7 @@ export const FairlaunchService = {
   async getConfirmedFairlaunch(id: string): Promise<FairlaunchProject | null> {
     try {
       const fairlaunch = await prisma.fairlaunchProject.findUnique({
-        where: { id },
-        include: {
-          user: true
-        }
+        where: { id }
       });
 
       if (!fairlaunch) {
@@ -259,7 +248,7 @@ export const FairlaunchService = {
         blockNumber: fairlaunch.blockNumber,
         deployedAt: fairlaunch.deployedAt,
         createdAt: fairlaunch.createdAt,
-        userId: fairlaunch.userId
+        ownerAddress: fairlaunch.ownerAddress
       };
     } catch (error) {
       console.error('❌ Error fetching fairlaunch project:', error);
@@ -273,10 +262,7 @@ export const FairlaunchService = {
   async getConfirmedFairlaunchByAddress(contractAddress: string): Promise<FairlaunchProject | null> {
     try {
       const fairlaunch = await prisma.fairlaunchProject.findUnique({
-        where: { contractAddress },
-        include: {
-          user: true
-        }
+        where: { contractAddress }
       });
 
       if (!fairlaunch) {
@@ -310,7 +296,7 @@ export const FairlaunchService = {
         blockNumber: fairlaunch.blockNumber,
         deployedAt: fairlaunch.deployedAt,
         createdAt: fairlaunch.createdAt,
-        userId: fairlaunch.userId
+        ownerAddress: fairlaunch.ownerAddress
       };
     } catch (error) {
       console.error('❌ Error fetching fairlaunch project by address:', error);
@@ -321,17 +307,14 @@ export const FairlaunchService = {
   /**
    * Get confirmed fairlaunch projects for a specific user
    */
-  async getUserConfirmedFairlaunches(userId: string, limit: number = 10, offset: number = 0): Promise<FairlaunchProject[]> {
+  async getFairlaunchesByOwner(ownerAddress: string, limit: number = 10, offset: number = 0): Promise<FairlaunchProject[]> {
     try {
       const fairlaunches = await prisma.fairlaunchProject.findMany({
-        where: { userId },
+        where: { ownerAddress: ownerAddress.toLowerCase() },
         take: limit,
         skip: offset,
         orderBy: {
           createdAt: 'desc'
-        },
-        include: {
-          user: true
         }
       });
 
@@ -362,7 +345,7 @@ export const FairlaunchService = {
         blockNumber: fairlaunch.blockNumber,
         deployedAt: fairlaunch.deployedAt,
         createdAt: fairlaunch.createdAt,
-        userId: fairlaunch.userId
+        ownerAddress: fairlaunch.ownerAddress
       }));
     } catch (error) {
       console.error('❌ Error fetching user fairlaunch projects:', error);

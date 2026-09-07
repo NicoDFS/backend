@@ -1,15 +1,20 @@
+# KalySwap launchpad (padV3) on KalyChain 3890 (graph-node chain "kmt").
+# Addresses: kalychain-ops/files/kmt-3890/addresses.json .launchpad (deployed 2026-08-25, blocks ~175800-175830).
+# ABIs are the audited solc-0.8.4 forge build; create() call signatures are unchanged from the previous
+# deployment, so the call handlers below still bind. Data-source names are kept so mappings' generated
+# imports do not move. The V2 token factories (LiquidityGenerator/Baby/Buyback/AntiBot) were not
+# ported to 3890 and are not indexed.
 specVersion: 0.0.5
 schema:
   file: ./schema.graphql
 dataSources:
-  # Token Factory Manager
   - kind: ethereum
     name: TokenFactoryManager
-    network: kalychain
+    network: kmt
     source:
-      address: "0xd8C7417F6Da77D534586715Cb1187935043C5A8F"
+      address: "0x380C25A239B1Edf8920f8f80364e3cf0E3dF0fA1"
       abi: TokenFactoryManager
-      startBlock: 34399619
+      startBlock: 175800
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -24,14 +29,13 @@ dataSources:
           handler: handleOwnershipTransferred
       file: ./src/token-factory-manager.ts
 
-  # Standard Token Factory
   - kind: ethereum
     name: StandardTokenFactory
-    network: kalychain
+    network: kmt
     source:
-      address: "0xB9228A684822D557ABd419814bC6b536Fa34E3BD"
+      address: "0xbcdbe5901E91c8a61ec9F90bC282fbA41a0e7E39"
       abi: StandardTokenFactory
-      startBlock: 34399619
+      startBlock: 175800
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -55,41 +59,43 @@ dataSources:
           handler: handleFlatFeeUpdated
       file: ./src/standard-token-factory.ts
 
-  # Liquidity Generator Token Factory
   - kind: ethereum
-    name: LiquidityGeneratorTokenFactory
-    network: kalychain
+    name: RewardsTokenFactory
+    network: kmt
     source:
-      address: "0xa13567796eeB7357f48caC8d83b4c1b885B66762"
-      abi: LiquidityGeneratorTokenFactory
-      startBlock: 34399619
+      address: "0x07149004fd2973fefA1D1772dE05cf9de1D0df32"
+      abi: RewardsTokenFactory
+      startBlock: 175800
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
         - TokenFactory
+        - Token
         - LaunchpadStats
         - LaunchpadDayData
       abis:
-        - name: LiquidityGeneratorTokenFactory
-          file: ../../src/blockchain/abis/launchpad/LiquidityGeneratorTokenFactory.json
+        - name: RewardsTokenFactory
+          file: ../../src/blockchain/abis/launchpad/RewardsTokenFactory.json
+        - name: StandardERC20
+          file: ../../src/blockchain/abis/launchpad/StandardERC20.json
       eventHandlers:
-        - event: OwnershipTransferred(indexed address,indexed address)
-          handler: handleOwnershipTransferred
-      callHandlers:
-        - function: create(string,string,uint256,address,address,uint16,uint16,uint16)
-          handler: handleLiquidityGeneratorTokenCreated
-      file: ./src/liquidity-generator-token-factory.ts
+        - event: TokenCreated(indexed address,indexed address,indexed address,string,string,uint256)
+          handler: handleRewardsTokenCreated
+        - event: FeeToUpdated(indexed address,indexed address)
+          handler: handleFeeToUpdated
+        - event: FlatFeeUpdated(uint256,uint256)
+          handler: handleFlatFeeUpdated
+      file: ./src/rewards-token-factory.ts
 
-  # Presale Factory
   - kind: ethereum
     name: PresaleFactory
-    network: kalychain
+    network: kmt
     source:
-      address: "0x42CA326c90868e034293C679BD61F5B0e6c88149"
+      address: "0xa458bDf0eF62a1dF382b1Cf483B24339bF946054"
       abi: PresaleFactory
-      startBlock: 34399619
+      startBlock: 175800
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -101,22 +107,21 @@ dataSources:
         - LaunchpadDayData
       abis:
         - name: PresaleFactory
-          file: ../../src/blockchain/abis/launchpad/PresaleFactory.json
+          file: ../../src/blockchain/abis/launchpad/PresaleV3Factory.json
         - name: Presale
-          file: ../../src/blockchain/abis/launchpad/Presale.json
+          file: ../../src/blockchain/abis/launchpad/PresaleV3.json
       callHandlers:
         - function: create(address,address,uint256[2],uint256[2],uint256,uint256,uint256,uint256,uint256)
           handler: handlePresaleCreated
       file: ./src/presale-factory.ts
 
-  # Fairlaunch Factory
   - kind: ethereum
     name: FairlaunchFactory
-    network: kalychain
+    network: kmt
     source:
-      address: "0xcf2A1325b32c3818B24171513cc9F71ae74592B9"
+      address: "0xaDFdD46404442B6067A74C23ef72d076d1405E9e"
       abi: FairlaunchFactory
-      startBlock: 34399619
+      startBlock: 175800
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -128,9 +133,9 @@ dataSources:
         - LaunchpadDayData
       abis:
         - name: FairlaunchFactory
-          file: ../../src/blockchain/abis/launchpad/FairLaunchFactory.json
+          file: ../../src/blockchain/abis/launchpad/FairLaunchV3Factory.json
         - name: Fairlaunch
-          file: ../../src/blockchain/abis/launchpad/Fairlaunch.json
+          file: ../../src/blockchain/abis/launchpad/FairlaunchV3.json
       eventHandlers:
         - event: FairlaunchCreated(indexed address,indexed address,indexed address,address,bool,uint256,uint256)
           handler: handleFairlaunchCreated
@@ -139,7 +144,3 @@ dataSources:
         - event: FlatFeeUpdated(uint256,uint256)
           handler: handleFlatFeeUpdated
       file: ./src/fairlaunch-factory.ts
-
-
-
-

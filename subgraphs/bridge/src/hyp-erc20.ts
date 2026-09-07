@@ -32,7 +32,7 @@ function getOrCreateToken(tokenAddress: Bytes): Token {
     token.name = nameResult.reverted ? "Unknown Token" : nameResult.value;
     token.symbol = symbolResult.reverted ? "???" : symbolResult.value;
     token.decimals = decimalsResult.reverted ? 18 : decimalsResult.value;
-    token.chainId = BigInt.fromI32(3888); // KalyChain
+    token.chainId = BigInt.fromI32(3890); // KalyChain domain (== chain id)
     token.standard = "HypERC20";
     token.totalBridgedOut = BigInt.fromI32(0);
     token.totalBridgedIn = BigInt.fromI32(0);
@@ -54,7 +54,7 @@ export function handleSentTransferRemote(event: SentTransferRemoteEvent): void {
   transfer.sender = event.transaction.from;
   transfer.recipient = event.params.recipient;
   transfer.amount = event.params.amount;
-  transfer.originDomain = BigInt.fromI32(3888); // KalyChain
+  transfer.originDomain = BigInt.fromI32(3890); // KalyChain domain (== chain id)
   transfer.destinationDomain = event.params.destination;
   transfer.timestamp = getTimestampFromEvent(event);
   transfer.txHash = formatTransactionHash(event.transaction.hash);
@@ -73,7 +73,7 @@ export function handleSentTransferRemote(event: SentTransferRemoteEvent): void {
   bridgeStats.save();
 
   // Update chain stats
-  let chainStats = getOrCreateChainStats(BigInt.fromI32(3888)); // KalyChain
+  let chainStats = getOrCreateChainStats(BigInt.fromI32(3890)); // KalyChain domain (== chain id)
   chainStats.totalTokensOut = chainStats.totalTokensOut.plus(event.params.amount);
   chainStats.lastUpdated = getTimestampFromEvent(event);
   chainStats.save();
@@ -98,7 +98,7 @@ export function handleReceivedTransferRemote(event: ReceivedTransferRemoteEvent)
   transfer.recipient = event.params.recipient;
   transfer.amount = event.params.amount;
   transfer.originDomain = event.params.origin;
-  transfer.destinationDomain = BigInt.fromI32(3888); // KalyChain
+  transfer.destinationDomain = BigInt.fromI32(3890); // KalyChain domain (== chain id)
   transfer.timestamp = getTimestampFromEvent(event);
   transfer.txHash = formatTransactionHash(event.transaction.hash);
   transfer.direction = "incoming";
@@ -116,7 +116,7 @@ export function handleReceivedTransferRemote(event: ReceivedTransferRemoteEvent)
   bridgeStats.save();
 
   // Update chain stats
-  let chainStats = getOrCreateChainStats(BigInt.fromI32(3888)); // KalyChain
+  let chainStats = getOrCreateChainStats(BigInt.fromI32(3890)); // KalyChain domain (== chain id)
   chainStats.totalTokensIn = chainStats.totalTokensIn.plus(event.params.amount);
   chainStats.lastUpdated = getTimestampFromEvent(event);
   chainStats.save();

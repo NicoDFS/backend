@@ -1,9 +1,40 @@
 import { gql } from 'graphql-request';
 import { getGraphQLClient } from '../graphql-client';
 import { PrismaClient } from '@prisma/client';
+import { ethers } from 'ethers';
+import { getProvider } from '../../blockchain/providers';
+import { KALYCHAIN_CONTRACTS } from '../../config/chain';
 
 const launchpadClient = getGraphQLClient('launchpad');
+
+// A presale/fairlaunch row from the launchpad subgraph. Only the fields the service
+// reads are named; the rest are passed through to the GraphQL layer untouched.
+interface SubgraphLaunch {
+  id: string;
+  address?: string;
+  saleToken?: { id: string; name: string; symbol: string; address: string } | null;
+  presaleStart?: string;
+  presaleEnd?: string;
+  [field: string]: unknown;
+}
 const prisma = new PrismaClient();
+
+const FLAT_FEE_ABI = ['function flatFee() view returns (uint256)'];
+
+/** Flat creation fee of each sale factory in whole KMT, read on-chain (boss adjusts via setFlatFee). 0 if the read fails. */
+async function readFactoryFlatFees(): Promise<[number, number]> {
+  const provider = getProvider();
+  const read = async (address: string): Promise<number> => {
+    try {
+      const fee = await new ethers.Contract(address, FLAT_FEE_ABI, provider).flatFee();
+      return Number(ethers.utils.formatEther(fee));
+    } catch (error) {
+      console.error(`Failed to read flatFee from ${address}:`, error);
+      return 0;
+    }
+  };
+  return Promise.all([read(KALYCHAIN_CONTRACTS.PRESALE_V3_FACTORY), read(KALYCHAIN_CONTRACTS.FAIRLAUNCH_V3_FACTORY)]);
+}
 
 export const LaunchpadService = {
   async getLaunchpadProjects() {
@@ -61,11 +92,11 @@ export const LaunchpadService = {
     `;
 
     try {
-      const data = await launchpadClient.request(query);
+      const data = await launchpadClient.request<{ presales?: SubgraphLaunch[]; fairlaunches?: SubgraphLaunch[] }>(query);
 
       // Combine presales and fairlaunches into a unified projects list
       const projects = [
-        ...(data.presales || []).map((presale: any) => ({
+        ...(data.presales || []).map((presale) => ({
           ...presale,
           type: 'presale',
           name: presale.saleToken?.name || 'Unknown Token',
@@ -73,7 +104,7 @@ export const LaunchpadService = {
           startTime: presale.presaleStart,
           endTime: presale.presaleEnd
         })),
-        ...(data.fairlaunches || []).map((fairlaunch: any) => ({
+        ...(data.fairlaunches || []).map((fairlaunch) => ({
           ...fairlaunch,
           type: 'fairlaunch',
           name: fairlaunch.saleToken?.name || 'Unknown Token',
@@ -145,7 +176,7 @@ export const LaunchpadService = {
     `;
 
     try {
-      const data = await launchpadClient.request(query, { id });
+      const data = await launchpadClient.request<{ presale?: SubgraphLaunch | null; fairlaunch?: SubgraphLaunch | null }>(query, { id });
 
       // Return either presale or fairlaunch data
       const project = data.presale || data.fairlaunch;
@@ -240,9 +271,6 @@ export const LaunchpadService = {
         take: 3,
         orderBy: {
           createdAt: 'desc'
-        },
-        include: {
-          user: true
         }
       });
 
@@ -250,9 +278,6 @@ export const LaunchpadService = {
         take: 3,
         orderBy: {
           createdAt: 'desc'
-        },
-        include: {
-          user: true
         }
       });
 
@@ -279,11 +304,11 @@ export const LaunchpadService = {
         tokenAddress: project.saleToken,
         startTime: project.startTime.toISOString(),
         endTime: project.endTime.toISOString(),
-        hardCap: project.type === 'presale' ? (project as any).hardCap : null,
+        hardCap: 'hardCap' in project ? project.hardCap : null,
         softCap: project.softCap,
         status: project.endTime > now ? 'Active' : 'Ended',
         type: project.type,
-        creator: project.userId,
+        creator: project.ownerAddress,
         saleToken: {
           id: project.saleToken,
           name: project.name,
@@ -295,10 +320,11 @@ export const LaunchpadService = {
         createdAt: project.createdAt.toISOString()
       }));
 
-      // Calculate factory fees (simplified - using fixed values since we don't have real fee data)
+      // Creation fees collected so far = sales created x the factory's current flat fee (KMT)
+      const [presaleFlatFee, fairlaunchFlatFee] = await readFactoryFlatFees();
       const tokenFactoryFees = 0; // Would need to be calculated from actual fee collection
-      const presaleFactoryFees = totalPresales * 200000; // 200k KLC per presale
-      const fairlaunchFactoryFees = totalFairlaunches * 200000; // 200k KLC per fairlaunch
+      const presaleFactoryFees = totalPresales * presaleFlatFee;
+      const fairlaunchFactoryFees = totalFairlaunches * fairlaunchFlatFee;
 
       const overview = {
         totalProjects,

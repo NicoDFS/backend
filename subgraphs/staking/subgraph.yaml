@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: KalyStaking
-    network: kalychain
+    network: kmt
     source:
-      address: "0xF670A2D32a2b25e181B26Abb02614a20eA1eA2D9"
+      address: "0xcd266886e83261219b1b7ba90bd6509820dd16a4"
       abi: KalyStaking
-      startBlock: 20992295
+      startBlock: 170908
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

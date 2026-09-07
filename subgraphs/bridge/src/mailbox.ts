@@ -20,7 +20,7 @@ export function handleDispatch(event: DispatchEvent): void {
 
   let message = new BridgeMessage(messageId);
   message.messageId = event.params.recipient; // Using recipient as messageId
-  message.originDomain = BigInt.fromI32(3888); // KalyChain domain ID
+  message.originDomain = BigInt.fromI32(3890); // KalyChain domain (== chain id)
   message.destinationDomain = event.params.destination;
   message.sender = event.params.sender;
   message.recipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000"); // Will be updated in Process event
@@ -43,7 +43,7 @@ export function handleDispatch(event: DispatchEvent): void {
   bridgeStats.save();
 
   // Update chain stats for origin chain
-  let originChainStats = getOrCreateChainStats(BigInt.fromI32(3888)); // KalyChain domain ID
+  let originChainStats = getOrCreateChainStats(BigInt.fromI32(3890)); // KalyChain domain (== chain id)
   originChainStats.totalMessagesOut = originChainStats.totalMessagesOut.plus(BigInt.fromI32(1));
   originChainStats.lastUpdated = getTimestampFromEvent(event);
   originChainStats.save();

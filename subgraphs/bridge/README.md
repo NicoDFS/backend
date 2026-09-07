@@ -62,7 +62,7 @@ The subgraph will automatically index token transfers for HypERC20 and HypNative
 
 Once deployed, you can query the subgraph at:
 ```
-http://localhost:8000/subgraphs/name/kalyswap/bridge-subgraph
+http://localhost:8000/subgraphs/name/bridge-subgraph-kmt
 ```
 
 Example query to get recent bridge messages:
@@ -106,12 +106,12 @@ Example query to get token transfer statistics:
 
 To check the sync status of your subgraph, run:
 ```bash
-curl -X POST http://localhost:8030/graphql -H "Content-Type: application/json" -d '{"query": "{ indexingStatusForCurrentVersion(subgraphName: \"kalyswap/bridge-subgraph\") { synced health chains { network latestBlock { number } chainHeadBlock { number } } } }"}'
+curl -X POST http://localhost:8030/graphql -H "Content-Type: application/json" -d '{"query": "{ indexingStatusForCurrentVersion(subgraphName: \"bridge-subgraph-kmt\") { synced health chains { network latestBlock { number } chainHeadBlock { number } } } }"}'
 ```
 
 Or to check the indexed data:
 ```bash
-curl -X POST -H "Content-Type: application/json" --data '{"query": "{_meta{block{number}}}"}'  http://localhost:8000/subgraphs/name/kalyswap/bridge-subgraph
+curl -X POST -H "Content-Type: application/json" --data '{"query": "{_meta{block{number}}}"}'  http://localhost:8000/subgraphs/name/bridge-subgraph-kmt
 ```
 
 ## Testing

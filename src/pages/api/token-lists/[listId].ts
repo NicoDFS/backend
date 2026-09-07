@@ -14,7 +14,7 @@ const TOKEN_LIST_URLS: Record<string, string> = {
 };
 
 // Cache for token lists
-const cache = new Map<string, { data: any; timestamp: number }>();
+const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 // CORS configuration - matches existing pattern from graphql.ts
@@ -23,7 +23,6 @@ const setCorsHeaders = (res: NextApiResponse, origin: string) => {
     'http://localhost:3001', // Admin panel (local)
     'http://localhost:3002', // Frontend (local)
     'http://localhost:3000', // Backend (for testing)
-    'http://localhost:8081', // Expo / React Native web (local)
     'https://app.kalyswap.io', // Main app
     'https://kalyswap.io', // Main website
     'https://admin.kalyswap.io' // Admin panel (production)

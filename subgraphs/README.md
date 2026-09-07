@@ -59,10 +59,10 @@ This directory contains subgraphs for indexing KalySwap contracts on KalyChain.
 ## Accessing the Subgraph
 
 Once deployed, you can access the GraphQL endpoint at:
-http://localhost:8000/subgraphs/name/kalyswap/staking-subgraph
+http://localhost:8000/subgraphs/name/staking-subgraph-kmt
 
 You can also use the GraphQL Playground at:
-http://localhost:8000/subgraphs/name/kalyswap/staking-subgraph/graphql
+http://localhost:8000/subgraphs/name/staking-subgraph-kmt/graphql
 
 ## Example Queries
 

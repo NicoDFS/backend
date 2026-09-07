@@ -6,11 +6,6 @@
         "name": "factoryManager_",
         "type": "address",
         "internalType": "address"
-      },
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
@@ -36,6 +31,16 @@
       },
       {
         "name": "totalSupply",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "rewardToken_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "minimumTokenBalanceForDividends_",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -214,6 +219,12 @@
         "internalType": "address"
       },
       {
+        "name": "rewardToken",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
         "name": "name",
         "type": "string",
         "indexed": false,
@@ -224,12 +235,6 @@
         "type": "string",
         "indexed": false,
         "internalType": "string"
-      },
-      {
-        "name": "decimals",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
       },
       {
         "name": "totalSupply",

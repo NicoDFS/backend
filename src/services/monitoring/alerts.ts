@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export const AlertService = {
-  async sendNodeDownAlert(nodeType: string, details: any) {
+  async sendNodeDownAlert(nodeType: string, details: unknown) {
     const mailOptions = {
       from: process.env.ALERT_FROM_EMAIL || 'alerts@example.com',
       to: process.env.ALERT_TO_EMAIL || 'admin@example.com',

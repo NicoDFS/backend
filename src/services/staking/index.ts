@@ -2,38 +2,46 @@ import { gql } from 'graphql-request';
 import { getGraphQLClient } from '../graphql-client';
 import { ethers } from 'ethers';
 import { getProvider } from '../../blockchain/providers';
+import { KALYCHAIN_CONTRACTS } from '../../config/chain';
+import stakingAbi from '../../blockchain/abis/staking/stakeABI.json';
 
-// Contract address
-const STAKING_CONTRACT_ADDRESS = '0xF670A2D32a2b25e181B26Abb02614a20eA1eA2D9';
+// Shapes returned by the staking subgraph (see subgraphs/staking/schema.graphql)
+interface SubgraphStakingPool {
+  id: string;
+  address: string;
+  totalStaked: string;
+  rewardRate: string;
+  rewardsDuration: string;
+  periodFinish: string;
+  lastUpdateTime: string;
+  rewardPerTokenStored: string;
+  paused: boolean;
+}
 
-// Mock data for testing
-const MOCK_STAKING_POOLS = [
-  {
-    id: STAKING_CONTRACT_ADDRESS.toLowerCase(),
-    address: STAKING_CONTRACT_ADDRESS,
-    totalStaked: '1000000000000000000000', // 1000 tokens with 18 decimals
-    rewardRate: '100000000000000000', // 0.1 tokens per block
-    rewardsDuration: '30758400', // 356 days in seconds
-    periodFinish: '1672531200', // Unix timestamp
-    lastUpdateTime: '1625097600', // Unix timestamp
-    rewardPerTokenStored: '1000000000000000000',
-    paused: false
-  }
-];
+interface SubgraphStakingUser {
+  id: string;
+  address: string;
+  stakedAmount: string;
+  rewards: string;
+  lastAction: string;
+  lastActionTimestamp: string;
+}
 
-// Use real data from the subgraph
-const USE_MOCK_DATA = false;
+interface SubgraphStakingEvent {
+  id: string;
+  user: { id: string; address: string };
+  amount: string;
+  timestamp: string;
+  blockNumber: string;
+  transactionHash: string;
+}
+
+const STAKING_CONTRACT_ADDRESS = KALYCHAIN_CONTRACTS.STAKING;
 
 const stakingClient = getGraphQLClient('staking');
 
 export const StakingService = {
   async getStakingPools() {
-    // Use mock data for testing
-    if (USE_MOCK_DATA) {
-      console.log('Using mock staking pool data');
-      return [MOCK_STAKING_POOLS[0]];
-    }
-
     const query = gql`
       query {
         stakingPools {
@@ -51,7 +59,7 @@ export const StakingService = {
     `;
 
     try {
-      const { stakingPools } = await stakingClient.request(query);
+      const { stakingPools } = await stakingClient.request<{ stakingPools: SubgraphStakingPool[] }>(query);
       return stakingPools;
     } catch (error) {
       console.error('Error fetching staking pools:', error);
@@ -60,15 +68,6 @@ export const StakingService = {
   },
 
   async getStakingPool(id: string) {
-    // Use mock data for testing
-    if (USE_MOCK_DATA) {
-      console.log(`Using mock data for staking pool ${id}`);
-      if (id.toLowerCase() === STAKING_CONTRACT_ADDRESS.toLowerCase()) {
-        return MOCK_STAKING_POOLS[0];
-      }
-      return null;
-    }
-
     const query = gql`
       query getStakingPool($id: ID!) {
         stakingPool(id: $id) {
@@ -86,7 +85,7 @@ export const StakingService = {
     `;
 
     try {
-      const { stakingPool } = await stakingClient.request(query, { id });
+      const { stakingPool } = await stakingClient.request<{ stakingPool: SubgraphStakingPool | null }>(query, { id });
       return stakingPool;
     } catch (error) {
       console.error(`Error fetching staking pool ${id}:`, error);
@@ -95,29 +94,6 @@ export const StakingService = {
   },
 
   async getStakingPoolUsers(poolId: string, first: number = 100, skip: number = 0) {
-    // Use mock data for testing
-    if (USE_MOCK_DATA) {
-      console.log(`Using mock data for staking pool users ${poolId}`);
-      return [
-        {
-          id: '0x1234567890abcdef1234567890abcdef12345678-' + STAKING_CONTRACT_ADDRESS.toLowerCase(),
-          address: '0x1234567890abcdef1234567890abcdef12345678',
-          stakedAmount: '500000000000000000000', // 500 tokens
-          rewards: '10000000000000000000', // 10 tokens
-          lastAction: 'staked',
-          lastActionTimestamp: '1625097600' // Unix timestamp
-        },
-        {
-          id: '0x2345678901abcdef2345678901abcdef23456789-' + STAKING_CONTRACT_ADDRESS.toLowerCase(),
-          address: '0x2345678901abcdef2345678901abcdef23456789',
-          stakedAmount: '300000000000000000000', // 300 tokens
-          rewards: '6000000000000000000', // 6 tokens
-          lastAction: 'claimed',
-          lastActionTimestamp: '1625184000' // Unix timestamp
-        }
-      ];
-    }
-
     const query = gql`
       query getStakingPoolUsers($poolId: ID!, $first: Int!, $skip: Int!) {
         users(
@@ -138,7 +114,7 @@ export const StakingService = {
     `;
 
     try {
-      const { users } = await stakingClient.request(query, { poolId, first, skip });
+      const { users } = await stakingClient.request<{ users: SubgraphStakingUser[] }>(query, { poolId, first, skip });
       return users;
     } catch (error) {
       console.error(`Error fetching users for staking pool ${poolId}:`, error);
@@ -147,22 +123,6 @@ export const StakingService = {
   },
 
   async getUserStakingInfo(userAddress: string, poolId: string) {
-    // Use mock data for testing
-    if (USE_MOCK_DATA) {
-      console.log(`Using mock data for user ${userAddress} in pool ${poolId}`);
-      if (userAddress.toLowerCase() === '0x1234567890abcdef1234567890abcdef12345678') {
-        return {
-          id: '0x1234567890abcdef1234567890abcdef12345678-' + STAKING_CONTRACT_ADDRESS.toLowerCase(),
-          address: '0x1234567890abcdef1234567890abcdef12345678',
-          stakedAmount: '500000000000000000000', // 500 tokens
-          rewards: '10000000000000000000', // 10 tokens
-          lastAction: 'staked',
-          lastActionTimestamp: '1625097600' // Unix timestamp
-        };
-      }
-      return null;
-    }
-
     const userId = userAddress.toLowerCase() + '-' + poolId.toLowerCase();
 
     const query = gql`
@@ -179,7 +139,7 @@ export const StakingService = {
     `;
 
     try {
-      const { user } = await stakingClient.request(query, { userId });
+      const { user } = await stakingClient.request<{ user: SubgraphStakingUser | null }>(query, { userId });
       return user;
     } catch (error) {
       console.error(`Error fetching staking info for user ${userAddress} in pool ${poolId}:`, error);
@@ -187,56 +147,7 @@ export const StakingService = {
     }
   },
 
-  async getStakingEvents(poolId: string, eventType: string, first: number = 100, skip: number = 0) {
-    // Use mock data for testing
-    if (USE_MOCK_DATA) {
-      console.log(`Using mock data for ${eventType} events in pool ${poolId}`);
-      if (eventType === 'stake') {
-        return [
-          {
-            id: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890-0',
-            user: {
-              id: '0x1234567890abcdef1234567890abcdef12345678-' + STAKING_CONTRACT_ADDRESS.toLowerCase(),
-              address: '0x1234567890abcdef1234567890abcdef12345678'
-            },
-            amount: '500000000000000000000', // 500 tokens
-            timestamp: '1625097600', // Unix timestamp
-            blockNumber: '20992300',
-            transactionHash: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
-          }
-        ];
-      } else if (eventType === 'withdraw') {
-        return [
-          {
-            id: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef-0',
-            user: {
-              id: '0x2345678901abcdef2345678901abcdef23456789-' + STAKING_CONTRACT_ADDRESS.toLowerCase(),
-              address: '0x2345678901abcdef2345678901abcdef23456789'
-            },
-            amount: '100000000000000000000', // 100 tokens
-            timestamp: '1625184000', // Unix timestamp
-            blockNumber: '20993000',
-            transactionHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
-          }
-        ];
-      } else if (eventType === 'reward') {
-        return [
-          {
-            id: '0x2345678901abcdef1234567890abcdef1234567890abcdef1234567890abcdef-0',
-            user: {
-              id: '0x2345678901abcdef2345678901abcdef23456789-' + STAKING_CONTRACT_ADDRESS.toLowerCase(),
-              address: '0x2345678901abcdef2345678901abcdef23456789'
-            },
-            amount: '6000000000000000000', // 6 tokens
-            timestamp: '1625184000', // Unix timestamp
-            blockNumber: '20993000',
-            transactionHash: '0x2345678901abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
-          }
-        ];
-      }
-      return [];
-    }
-
+  async getStakingEvents(poolId: string = STAKING_CONTRACT_ADDRESS, eventType: string, first: number = 100, skip: number = 0) {
     let eventQuery = '';
     if (eventType === 'stake') {
       eventQuery = `
@@ -309,7 +220,11 @@ export const StakingService = {
     `;
 
     try {
-      const result = await stakingClient.request(query, { poolId, first, skip });
+      const result = await stakingClient.request<{
+        stakeEvents?: SubgraphStakingEvent[];
+        withdrawEvents?: SubgraphStakingEvent[];
+        rewardEvents?: SubgraphStakingEvent[];
+      }>(query, { poolId, first, skip });
       if (eventType === 'stake') {
         return result.stakeEvents;
       } else if (eventType === 'withdraw') {
@@ -328,8 +243,7 @@ export const StakingService = {
   async getContractData() {
     try {
       const provider = getProvider();
-      const abi = require('../../blockchain/abis/staking/stakeABI.json');
-      const contract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, abi, provider);
+      const contract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, stakingAbi, provider);
 
       const [
         totalSupply,
@@ -369,8 +283,7 @@ export const StakingService = {
   async getUserContractData(userAddress: string) {
     try {
       const provider = getProvider();
-      const abi = require('../../blockchain/abis/staking/stakeABI.json');
-      const contract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, abi, provider);
+      const contract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, stakingAbi, provider);
 
       const [
         stakedAmount,

@@ -2,16 +2,16 @@ import { Context } from '../context';
 
 export const stakingResolvers = {
   Query: {
-    stakingPools: async (_: any, __: any, { stakingService }: Context) => {
+    stakingPools: async (_: unknown, __: unknown, { stakingService }: Context) => {
       return stakingService.getStakingPools();
     },
 
-    stakingPool: async (_: any, { id }: { id: string }, { stakingService }: Context) => {
+    stakingPool: async (_: unknown, { id }: { id: string }, { stakingService }: Context) => {
       return stakingService.getStakingPool(id);
     },
 
     stakingPoolUsers: async (
-      _: any,
+      _: unknown,
       { poolId, first, skip }: { poolId: string; first?: number; skip?: number },
       { stakingService }: Context
     ) => {
@@ -19,7 +19,7 @@ export const stakingResolvers = {
     },
 
     userStakingInfo: async (
-      _: any,
+      _: unknown,
       { userAddress, poolId }: { userAddress: string; poolId: string },
       { stakingService }: Context
     ) => {
@@ -27,7 +27,7 @@ export const stakingResolvers = {
     },
 
     stakeEvents: async (
-      _: any,
+      _: unknown,
       { poolId, first, skip }: { poolId?: string; first?: number; skip?: number },
       { stakingService }: Context
     ) => {
@@ -35,7 +35,7 @@ export const stakingResolvers = {
     },
 
     withdrawEvents: async (
-      _: any,
+      _: unknown,
       { poolId, first, skip }: { poolId?: string; first?: number; skip?: number },
       { stakingService }: Context
     ) => {
@@ -43,19 +43,19 @@ export const stakingResolvers = {
     },
 
     rewardEvents: async (
-      _: any,
+      _: unknown,
       { poolId, first, skip }: { poolId?: string; first?: number; skip?: number },
       { stakingService }: Context
     ) => {
       return stakingService.getStakingEvents(poolId, 'reward', first, skip);
     },
 
-    stakingContractData: async (_: any, __: any, { stakingService }: Context) => {
+    stakingContractData: async (_: unknown, __: unknown, { stakingService }: Context) => {
       return stakingService.getContractData();
     },
 
     userStakingContractData: async (
-      _: any,
+      _: unknown,
       { userAddress }: { userAddress: string },
       { stakingService }: Context
     ) => {

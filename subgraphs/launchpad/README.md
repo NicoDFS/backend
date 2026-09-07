@@ -82,8 +82,8 @@ This subgraph indexes the KalySwap Launchpad contracts on KalyChain, providing c
 ## Configuration
 
 - **Network**: KalyChain
-- **Start Block**: 34399619
-- **RPC Endpoint**: https://rpc.kalychain.io/rpc
+- **Start Block**: 175800
+- **RPC Endpoint**: https://mainrpc.kalychain.io/rpc (chain `kmt`, id 3890)
 - **Graph CLI Version**: 0.97.0
 - **Graph TS Version**: 0.38.0
 
@@ -114,7 +114,7 @@ npm run remove-local
 The subgraph is configured to deploy to a local Graph Node instance:
 - Graph Node: http://localhost:8020/
 - IPFS: http://localhost:5001
-- Subgraph Name: kalyswap/launchpad-subgraph
+- Subgraph Name: launchpad-subgraph-kmt
 
 ## Event Handling
 

@@ -1,5 +1,5 @@
-import { Context } from '../context';
 import { ProjectService, ProjectDeploymentData } from '../../services/project';
+import { verifyDeployment } from '../../services/launchpad/deploymentVerifier';
 
 export const projectResolvers = {
   Query: {
@@ -7,9 +7,8 @@ export const projectResolvers = {
      * Get all confirmed projects with pagination
      */
     confirmedProjects: async (
-      _: any, 
-      { limit = 10, offset = 0 }: { limit?: number; offset?: number }, 
-      context: Context
+      _: unknown, 
+      { limit = 10, offset = 0 }: { limit?: number; offset?: number }
     ) => {
       try {
         const projects = await ProjectService.getConfirmedProjects(limit, offset);
@@ -20,7 +19,6 @@ export const projectResolvers = {
           presaleEnd: project.presaleEnd.toISOString(),
           deployedAt: project.deployedAt.toISOString(),
           createdAt: project.createdAt.toISOString(),
-          user: { id: project.userId } // Will be resolved by User resolver
         }));
       } catch (error) {
         console.error('Error fetching confirmed projects:', error);
@@ -32,9 +30,8 @@ export const projectResolvers = {
      * Get a specific confirmed project by ID
      */
     confirmedProject: async (
-      _: any,
-      { id }: { id: string },
-      context: Context
+      _: unknown,
+      { id }: { id: string }
     ) => {
       try {
         const project = await ProjectService.getConfirmedProject(id);
@@ -49,7 +46,6 @@ export const projectResolvers = {
           presaleEnd: project.presaleEnd.toISOString(),
           deployedAt: project.deployedAt.toISOString(),
           createdAt: project.createdAt.toISOString(),
-          user: { id: project.userId } // Will be resolved by User resolver
         };
       } catch (error) {
         console.error('Error fetching confirmed project:', error);
@@ -61,9 +57,8 @@ export const projectResolvers = {
      * Get a specific confirmed project by contract address
      */
     confirmedProjectByAddress: async (
-      _: any,
-      { contractAddress }: { contractAddress: string },
-      context: Context
+      _: unknown,
+      { contractAddress }: { contractAddress: string }
     ) => {
       try {
         const project = await ProjectService.getConfirmedProjectByAddress(contractAddress);
@@ -78,7 +73,6 @@ export const projectResolvers = {
           presaleEnd: project.presaleEnd.toISOString(),
           deployedAt: project.deployedAt.toISOString(),
           createdAt: project.createdAt.toISOString(),
-          user: { id: project.userId } // Will be resolved by User resolver
         };
       } catch (error) {
         console.error('Error fetching confirmed project by address:', error);
@@ -87,20 +81,14 @@ export const projectResolvers = {
     },
 
     /**
-     * Get confirmed projects for the authenticated user
+     * Get confirmed projects deployed by a given address
      */
-    myConfirmedProjects: async (
-      _: any, 
-      { limit = 10, offset = 0 }: { limit?: number; offset?: number }, 
-      context: Context
+    projectsByOwner: async (
+      _: unknown,
+      { ownerAddress, limit = 10, offset = 0 }: { ownerAddress: string; limit?: number; offset?: number }
     ) => {
       try {
-        // Check if user is authenticated
-        if (!context.user) {
-          throw new Error('Authentication required');
-        }
-
-        const projects = await ProjectService.getUserConfirmedProjects(context.user.id, limit, offset);
+        const projects = await ProjectService.getProjectsByOwner(ownerAddress, limit, offset);
         
         return projects.map(project => ({
           ...project,
@@ -108,11 +96,10 @@ export const projectResolvers = {
           presaleEnd: project.presaleEnd.toISOString(),
           deployedAt: project.deployedAt.toISOString(),
           createdAt: project.createdAt.toISOString(),
-          user: { id: project.userId } // Will be resolved by User resolver
         }));
       } catch (error) {
-        console.error('Error fetching user confirmed projects:', error);
-        throw new Error('Failed to fetch user confirmed projects');
+        console.error('Error fetching projects by owner:', error);
+        throw new Error('Failed to fetch projects by owner');
       }
     }
   },
@@ -123,26 +110,18 @@ export const projectResolvers = {
      * This is the ONLY way projects get saved to the database
      */
     saveProjectAfterDeployment: async (
-      _: any,
-      { input }: { input: ProjectDeploymentData },
-      context: Context
+      _: unknown,
+      { input }: { input: Omit<ProjectDeploymentData, 'ownerAddress'> }
     ) => {
       try {
-        // Check if user is authenticated
-        if (!context.user) {
-          throw new Error('Authentication required to create presales. Please login to your account.');
-        }
-
-        // Add user ID to the input data
-        const projectData: ProjectDeploymentData = {
-          ...input,
-          userId: context.user.id
-        };
-
         // Validate required blockchain data
-        if (!projectData.contractAddress || !projectData.transactionHash || !projectData.blockNumber) {
+        if (!input.contractAddress || !input.transactionHash || !input.blockNumber) {
           throw new Error('Blockchain confirmation required: contractAddress, transactionHash, and blockNumber must be provided');
         }
+
+        // Ownership is the deployer of the on-chain tx — nothing else vouches for it
+        const { ownerAddress } = await verifyDeployment(input);
+        const projectData: ProjectDeploymentData = { ...input, ownerAddress };
 
         // Validate required project data
         if (!projectData.name || !projectData.description || !projectData.saleToken || !projectData.baseToken) {
@@ -152,7 +131,7 @@ export const projectResolvers = {
         // Save the confirmed project
         const project = await ProjectService.saveConfirmedProject(projectData);
 
-        console.log(`✅ Project saved for user ${context.user.username}: ${project.name} (${project.contractAddress})`);
+        console.log(`✅ Project saved for ${ownerAddress}: ${project.name} (${project.contractAddress})`);
 
         return {
           ...project,
@@ -160,7 +139,6 @@ export const projectResolvers = {
           presaleEnd: project.presaleEnd.toISOString(),
           deployedAt: project.deployedAt.toISOString(),
           createdAt: project.createdAt.toISOString(),
-          user: { id: project.userId } // Will be resolved by User resolver
         };
       } catch (error) {
         console.error('Error saving project after deployment:', error);
@@ -174,26 +152,4 @@ export const projectResolvers = {
       }
     }
   },
-
-  // Field resolvers
-  Project: {
-    /**
-     * Resolve the user field for Project type
-     */
-    user: async (parent: any, _: any, context: Context) => {
-      try {
-        // Use the existing user service to get user data
-        if (context.userService) {
-          return await context.userService.getUserById(parent.userId);
-        }
-        
-        // Fallback: return minimal user data
-        return { id: parent.userId };
-      } catch (error) {
-        console.error('Error resolving project user:', error);
-        // Return minimal user data on error
-        return { id: parent.userId };
-      }
-    }
-  }
 };

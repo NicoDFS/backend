@@ -1,12 +1,9 @@
 import { ethers } from 'ethers';
+import { KALYCHAIN_RPC_URL } from '../../config/chain';
 
-// Default to KalyChain mainnet RPC
-const KALYCHAIN_RPC_URL = process.env.KALYCHAIN_RPC_URL || 'https://rpc.kalychain.io/rpc';
-
-// Create a provider instance
+// The one KalyChain provider (chain id 3890). RPC comes from KALYCHAIN_RPC_URL.
 export const provider = new ethers.providers.JsonRpcProvider(KALYCHAIN_RPC_URL);
 
-// Export a function to get the provider
 export function getProvider(): ethers.providers.Provider {
   return provider;
 }

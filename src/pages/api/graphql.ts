@@ -2,12 +2,12 @@ import { ApolloServer } from 'apollo-server-micro';
 import { ApolloServerPluginLandingPageGraphQLPlayground } from 'apollo-server-core';
 import { schema } from '../../graphql/schema';
 import { createContext } from '../../graphql/context';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 const apolloServer = new ApolloServer({
   schema,
   context: createContext,
   plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
-  cors: false, // Disable Apollo Server's built-in CORS
   // Enhanced error formatting to ensure proper JSON responses
   formatError: (error) => {
     // Log the error for debugging
@@ -29,37 +29,18 @@ const apolloServer = new ApolloServer({
       },
     };
   },
-  // Enhanced error response handling
-  formatResponse: (response, requestContext) => {
-    // Ensure we always return valid JSON
-    if (response.errors) {
-      // Log authentication errors specifically
-      const authErrors = response.errors.filter(error =>
-        error.message.includes('Authentication required') ||
-        error.message.includes('Invalid token') ||
-        error.message.includes('Token expired')
-      );
-
-      if (authErrors.length > 0) {
-        console.warn('Authentication error detected:', authErrors.map(e => e.message));
-      }
-    }
-
-    return response;
-  },
 });
 
 const startServer = apolloServer.start();
 
 // Manual CORS handling to avoid conflicts
-const setCorsHeaders = (res: any, origin: string) => {
+const setCorsHeaders = (res: NextApiResponse, origin: string) => {
   const allowedOrigins = [
     'http://localhost:3001', // Admin panel (local, raw port)
     'http://localhost:3002', // Frontend (local, raw port)
     'http://localhost:3000', // Backend (for testing)
     'https://kalyswap.localhost', // Frontend (local, via portless)
     'https://admin.kalyswap.localhost', // Admin panel (local, via portless)
-    'http://localhost:8081', // Expo / React Native web (local)
     'https://app.kalyswap.io', // Main app
     'https://kalyswap.io', // Main website
     'https://admin.kalyswap.io' // Admin panel (production)
@@ -82,7 +63,7 @@ const setCorsHeaders = (res: any, origin: string) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 };
 
-export default async (req: any, res: any) => {
+const graphqlHandler = async (req: NextApiRequest, res: NextApiResponse) => {
   const origin = req.headers.origin || '';
 
   // Set CORS headers
@@ -99,6 +80,8 @@ export default async (req: any, res: any) => {
     path: '/api/graphql',
   })(req, res);
 };
+
+export default graphqlHandler;
 
 export const config = {
   api: {

@@ -4,10 +4,10 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 kalyswap/bridge-subgraph",
-    "create-local": "graph create --node http://localhost:8020/ kalyswap/bridge-subgraph",
-    "remove-local": "graph remove --node http://localhost:8020/ kalyswap/bridge-subgraph",
-    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 kalyswap/bridge-subgraph",
+    "deploy": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 bridge-subgraph-kmt",
+    "create-local": "graph create --node http://localhost:8020/ bridge-subgraph-kmt",
+    "remove-local": "graph remove --node http://localhost:8020/ bridge-subgraph-kmt",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 bridge-subgraph-kmt",
     "test": "graph test"
   },
   "dependencies": {

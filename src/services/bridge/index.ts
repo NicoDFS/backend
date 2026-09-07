@@ -1,75 +1,83 @@
 import { gql } from 'graphql-request';
 import { getGraphQLClient } from '../graphql-client';
 import axios from 'axios';
+import { KALYCHAIN_DOMAIN, KALYCHAIN_TOKENS, KALYCHAIN_WARP_ROUTES } from '../../config/chain';
 
-// Use the bridge and dex subgraph clients
-const bridgeClient = getGraphQLClient('bridge');
-const dexClient = getGraphQLClient('dex');
-
-// Define a type for our USDT baseline values
-interface UsdtBaselineValues {
-  rawIn: string;
-  rawOut: string;
-  correctedIn: string;
-  correctedOut: string;
-  lastUpdate: number;
+// Shapes returned by the bridge subgraph (see subgraphs/bridge/schema.graphql)
+interface SubgraphToken {
+  id: string;
+  symbol: string;
+  name: string;
+  decimals?: number;
 }
 
-// Create a global variable to store USDT baseline values
-let usdtBaselineValues: UsdtBaselineValues | null = null;
+interface SubgraphTokenTransfer {
+  id: string;
+  messageId: string;
+  token: SubgraphToken | null;
+  sender: string;
+  recipient: string;
+  amount: string;
+  originDomain: number | string;
+  destinationDomain: number | string;
+  timestamp: number | string;
+  txHash: string;
+  direction: 'incoming' | 'outgoing';
+}
 
-// Map of chain IDs to names
+interface SubgraphBridgeMessage {
+  id: string;
+  messageId: string;
+  sender: string;
+  recipient: string;
+  originDomain: number | string;
+  destinationDomain: number | string;
+  status: string;
+  dispatchTimestamp: number | string;
+  deliveryTimestamp: number | string | null;
+  dispatchTxHash: string | null;
+  deliveryTxHash: string | null;
+  token: SubgraphToken | null;
+  amount: string | null;
+}
+
+interface SubgraphBridgeStats {
+  totalMessages: string;
+  totalMessagesDelivered: string;
+  totalTokenTransfers: string;
+  totalTokensOut: string;
+  totalTokensIn: string;
+  lastUpdated: string;
+}
+
+interface SubgraphTokenTotals extends SubgraphToken {
+  totalBridgedIn: string;
+  totalBridgedOut: string;
+}
+
+const bridgeClient = getGraphQLClient('bridge');
+
+// Hyperlane domain id -> chain name. KalyChain's domain is its chain id (3890).
 const chainIdToName: Record<string, string> = {
   '0': 'unknown',
   '1': 'ethereum',
   '56': 'bsc',
+  '137': 'polygon',
   '42161': 'arbitrum',
-  '3888': 'kalychain',
-  '3890': 'clisha'
+  [String(KALYCHAIN_DOMAIN)]: 'kalychain',
 };
 
-// Map of token addresses to known symbols and names
-const tokenAddressToInfo: Record<string, { symbol: string, name: string, decimals: number }> = {
-  // Native tokens
-  '0x8a1abbb167b149f2493c8141091028fd812da6e4': { symbol: 'KLC', name: 'KalyChain', decimals: 18 },
-  '0x0000000000000000000000000000000000000000': { symbol: 'KLC', name: 'KalyChain', decimals: 18 },
-  '0xf670a2d32a2b25e181b26abb02614a20ea1ea2d9': { symbol: 'KLC', name: 'KalyChain', decimals: 18 },
-  '0xfdbb253753dde60b11211b169dc872aae672879b': { symbol: 'ETH', name: 'Ethereum', decimals: 18 },
-  '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc': { symbol: 'ETH', name: 'Ethereum', decimals: 18 },
-  '0x0e2318b62a096ac68ad2d7f37592cbf0ca9c4ddb': { symbol: 'BNB', name: 'Binance Coin', decimals: 18 },
-  '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c': { symbol: 'BNB', name: 'Binance Coin', decimals: 18 },
-  '0x9c3c9283d3e44854697cd22d3faa240cfb032889': { symbol: 'POL', name: 'Polygon', decimals: 18 },
-  '0x0000000000000000000000000000000000001010': { symbol: 'POL', name: 'Polygon', decimals: 18 },
-  '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0': { symbol: 'POL', name: 'Polygon', decimals: 18 },
-  '0x376E0ac0B55aA79F9B30aAc8842e5E84fF06360C': { symbol: 'CLISHA', name: 'Clisha Coin', decimals: 18},
-
-  // Stablecoins
-  '0x9cAb0c396cF0F4325913f2269a0b72BD4d46E3A9': { symbol: 'USDC', name: 'USD Coin', decimals: 6 },
-  '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': { symbol: 'USDC', name: 'USD Coin', decimals: 6 },
-
-  '0x2CA775C77B922A51FcF3097F52bFFdbc0250D99A': { symbol: 'USDT', name: 'Tether USD', decimals: 6 },
-  '0xdac17f958d2ee523a2206206994597c13d831ec7': { symbol: 'USDT', name: 'Tether USD', decimals: 6 },
-
-  '0x6E92CAC380F7A7B86f4163fad0df2F277B16Edc6': { symbol: 'DAI', name: 'Dai Stablecoin', decimals: 18 },
-  '0x6b175474e89094c44da98b954eedeac495271d0f': { symbol: 'DAI', name: 'Dai Stablecoin', decimals: 18 },
-  '0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3': { symbol: 'DAI', name: 'Binance-Peg DAI', decimals: 18 },
-
-  // Bitcoin tokens
-  '0xaA77D4a26d432B82DB07F8a47B7f7F623fd92455': { symbol: 'WBTC', name: 'Wrapped Bitcoin', decimals: 8 },
-  '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599': { symbol: 'WBTC', name: 'Wrapped Bitcoin', decimals: 8 },
-
-  // Wrapped tokens
-  '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc3': { symbol: 'WETH', name: 'Wrapped Ether', decimals: 18 },
-
-  // Add more tokens as needed
-};
+// KalyChain-side (HypERC20 synthetic) token addresses -> metadata. The bridge subgraph only
+// indexes KalyChain-side contracts, so remote-chain addresses never show up here.
+const tokenAddressToInfo: Record<string, { symbol: string, name: string, decimals: number }> = Object.fromEntries(
+  Object.values(KALYCHAIN_TOKENS)
+    .filter(t => t.symbol !== 'WKMT')
+    .map(t => [t.address.toLowerCase(), { symbol: t.symbol, name: t.name, decimals: t.decimals }]),
+);
 
 // Map of token symbols to CoinGecko IDs
 const tokenToCoinGeckoId: Record<string, string> = {
-  'KLC': 'kalychain',
   'ETH': 'ethereum',
-  'BNB': 'binancecoin',
-  'POL': 'polygon',
   'WBTC': 'wrapped-bitcoin',
   'USDC': 'usd-coin',
   'USDT': 'tether',
@@ -80,89 +88,6 @@ const tokenToCoinGeckoId: Record<string, string> = {
 let tokenPriceCache: Record<string, number> = {};
 let lastPriceFetch = 0;
 const PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// Helper function to get KLC price from DEX subgraph
-const getKLCPriceFromDex = async (): Promise<number> => {
-  try {
-    // Get KLC price in USD from a stablecoin pair (USDT/WKLC)
-    const klcPriceQuery = gql`
-      query {
-        pair(id: "0x25fddaf836d12dc5e285823a644bb86e0b79c8e2") {
-          token0 {
-            symbol
-          }
-          token1 {
-            symbol
-          }
-          token0Price
-          token1Price
-          reserve0
-          reserve1
-        }
-      }
-    `;
-
-    const pairData = await dexClient.request(klcPriceQuery) as any;
-    const pair = pairData.pair;
-
-    console.log('WKLC/USDT pair data:', JSON.stringify(pair, null, 2));
-
-    // Determine which token is WKLC and which is USDT
-    let klcPriceInUSD = 0;
-    if (pair) {
-      // Log the raw price data for debugging
-      console.log(`Raw pair data - token0: ${pair.token0.symbol}, token1: ${pair.token1.symbol}`);
-      console.log(`Raw prices - token0Price: ${pair.token0Price}, token1Price: ${pair.token1Price}`);
-
-      if (pair.token0.symbol === 'WKLC' && pair.token1.symbol === 'USDT') {
-        // token1Price is the price of token0 in terms of token1
-        // So this is WKLC price in USDT
-        klcPriceInUSD = parseFloat(pair.token1Price);
-        console.log(`WKLC is token0, price calculation: ${pair.token1Price} (token1Price)`);
-      } else if (pair.token0.symbol === 'USDT' && pair.token1.symbol === 'WKLC') {
-        // token0Price is the price of token1 in terms of token0
-        // So this is WKLC price in USDT
-        klcPriceInUSD = parseFloat(pair.token0Price);
-        console.log(`WKLC is token1, price calculation: ${pair.token0Price} (token0Price)`);
-      }
-
-      // Calculate price manually from reserves as a sanity check
-      if (pair.reserve0 && pair.reserve1) {
-        const reserve0 = parseFloat(pair.reserve0);
-        const reserve1 = parseFloat(pair.reserve1);
-
-        if (pair.token0.symbol === 'WKLC' && reserve0 > 0) {
-          const manualPrice = reserve1 / reserve0;
-          console.log(`Manual price calculation (reserve1/reserve0): ${manualPrice}`);
-        } else if (pair.token1.symbol === 'WKLC' && reserve1 > 0) {
-          const manualPrice = reserve0 / reserve1;
-          console.log(`Manual price calculation (reserve0/reserve1): ${manualPrice}`);
-        }
-      }
-    }
-
-    console.log(`KLC price in USD from DEX: $${klcPriceInUSD}`);
-
-    // Sanity check - KLC price should be reasonable
-    const MIN_REASONABLE_PRICE = 0.0001;  // $0.0001
-    const MAX_REASONABLE_PRICE = 0.01;    // $0.01
-
-    if (!klcPriceInUSD ||
-        klcPriceInUSD === 0 ||
-        isNaN(klcPriceInUSD) ||
-        klcPriceInUSD < MIN_REASONABLE_PRICE ||
-        klcPriceInUSD > MAX_REASONABLE_PRICE) {
-
-      console.log(`KLC price from DEX (${klcPriceInUSD}) is outside reasonable range or invalid - cannot provide price without market data`);
-      klcPriceInUSD = 0; // Do not use hardcoded price
-    }
-
-    return klcPriceInUSD;
-  } catch (error) {
-    console.error('Error fetching KLC price from DEX:', error);
-    return 0; // Do not use hardcoded fallback price
-  }
-};
 
 // Helper function to get token prices
 const getTokenPrices = async (): Promise<Record<string, number>> => {
@@ -175,8 +100,6 @@ const getTokenPrices = async (): Promise<Record<string, number>> => {
   }
 
   try {
-    // Get KLC price from DEX
-    const klcPrice = await getKLCPriceFromDex();
 
     // Get list of token IDs to fetch from CoinGecko
     const tokenIds = Object.values(tokenToCoinGeckoId).join(',');
@@ -199,14 +122,6 @@ const getTokenPrices = async (): Promise<Record<string, number>> => {
       }
     }
 
-    // Override KLC price with the one from DEX if available
-    if (klcPrice > 0) {
-      console.log(`Using KLC price from DEX: $${klcPrice}`);
-      prices['KLC'] = klcPrice;
-    } else {
-      console.warn('KLC price not available from DEX - cannot provide KLC price without market data');
-      // Do not set KLC price if no market data available
-    }
 
     // Add stablecoins with fixed prices
     if (!prices['USDC']) prices['USDC'] = 1;
@@ -220,9 +135,9 @@ const getTokenPrices = async (): Promise<Record<string, number>> => {
     lastPriceFetch = now;
 
     return prices;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching token prices:', error);
-    if (error.response) {
+    if (axios.isAxiosError(error) && error.response) {
       console.error('Error response data:', error.response.data);
       console.error('Error response status:', error.response.status);
     }
@@ -359,10 +274,10 @@ export const BridgeService = {
     `;
 
     try {
-      const data = await bridgeClient.request(query, { limit, skip }) as any;
+      const data = await bridgeClient.request<{ tokenTransfers: SubgraphTokenTransfer[] }>(query, { limit, skip });
 
       // Transform the data to match the expected format in the frontend
-      const transfers = data.tokenTransfers.map((transfer: any) => {
+      const transfers = data.tokenTransfers.map((transfer) => {
         // Get token info - either from the token object or from our mapping
         let tokenInfo: { symbol: string | null, name: string | null, decimals: number } = { symbol: null, name: null, decimals: 18 };
         if (transfer.token) {
@@ -386,11 +301,11 @@ export const BridgeService = {
         // Determine source and destination chains based on direction
         let sourceChain, destinationChain;
         if (transfer.direction === 'outgoing') {
-          sourceChain = getChainName('3888'); // KalyChain
+          sourceChain = getChainName(String(KALYCHAIN_DOMAIN));
           destinationChain = getChainName(transfer.destinationDomain.toString());
         } else {
           sourceChain = getChainName(transfer.originDomain.toString());
-          destinationChain = getChainName('3888'); // KalyChain
+          destinationChain = getChainName(String(KALYCHAIN_DOMAIN));
         }
 
         // Map to the Bridge format
@@ -410,10 +325,10 @@ export const BridgeService = {
         };
       });
 
-      // Filter transfers to only include those to/from KalyChain (domain 3888)
+      // Filter transfers to only include those to/from KalyChain
       // This is redundant since all transfers in the subgraph involve KalyChain,
       // but we'll keep it for consistency
-      const filteredTransfers = transfers.filter((transfer: any) => {
+      const filteredTransfers = transfers.filter((transfer) => {
         return transfer.sourceChain === 'Kalychain' || transfer.destinationChain === 'Kalychain';
       });
 
@@ -450,7 +365,7 @@ export const BridgeService = {
     `;
 
     try {
-      const data = await bridgeClient.request(query, { id }) as any;
+      const data = await bridgeClient.request<{ bridgeMessage: SubgraphBridgeMessage | null }>(query, { id });
 
       if (!data.bridgeMessage) {
         return null;
@@ -521,7 +436,7 @@ export const BridgeService = {
     `;
 
     try {
-      const data = await bridgeClient.request(query) as any;
+      const data = await bridgeClient.request<{ bridgeStats: SubgraphBridgeStats | null; tokens: SubgraphTokenTotals[] }>(query);
 
       if (!data.bridgeStats) {
         throw new Error('No bridge stats found');
@@ -531,134 +446,8 @@ export const BridgeService = {
       const tokenPrices = await getTokenPrices();
 
       // Process tokens to use our mapping for unknown tokens
-      const processedTokens = data.tokens.map((token: any) => {
+      const processedTokens = data.tokens.map((token) => {
         let tokenInfo;
-
-        // Special handling for USDT token with incorrect decimal values
-        if (token.id.toLowerCase() === '0x2ca775c77b922a51fcf3097f52bffdbc0250d99a') {
-          tokenInfo = getTokenInfo(token.id);
-
-          // Ensure we have the correct token info
-          if (tokenInfo.symbol === '???') {
-            // If token info is not found in our mapping, use the known values
-            tokenInfo = {
-              symbol: 'USDT',
-              name: 'Tether USD',
-              decimals: 6
-            };
-          }
-
-          // The issue is that we have a transaction with 18 decimals instead of 6
-          // We need to identify and remove the problematic transaction
-
-          // Store the known correct values as of the fix time
-          const KNOWN_CORRECT_IN = BigInt('266436500');  // 266.4365 USDT with 6 decimals
-          const KNOWN_CORRECT_OUT = BigInt('0');         // 0 USDT
-
-          // Get the current raw values
-          const currentRawIn = BigInt(token.totalBridgedIn);
-          const currentRawOut = BigInt(token.totalBridgedOut);
-
-          console.log(`USDT current raw values - In: ${currentRawIn.toString()}, Out: ${currentRawOut.toString()}`);
-
-          // Check if the problematic transaction is still in the data
-          // If the out amount is very large (> 1e18), it likely still includes the problematic tx
-          const hasProblematicTx = currentRawOut > BigInt('1000000000000000000');
-
-          let correctedBridgedIn: bigint;
-          let correctedBridgedOut: bigint;
-
-          if (hasProblematicTx) {
-            // If the problematic transaction is still there, use our known correct values
-            // This is the first run after the fix
-            console.log('USDT still has problematic transaction, using known correct values');
-            correctedBridgedIn = KNOWN_CORRECT_IN;
-            correctedBridgedOut = KNOWN_CORRECT_OUT;
-
-            // Store the baseline for future calculations
-            if (usdtBaselineValues === null) {
-              usdtBaselineValues = {
-                rawIn: currentRawIn.toString(),
-                rawOut: currentRawOut.toString(),
-                correctedIn: KNOWN_CORRECT_IN.toString(),
-                correctedOut: KNOWN_CORRECT_OUT.toString(),
-                lastUpdate: Date.now()
-              };
-            }
-          } else {
-            // The problematic transaction is no longer in the data
-            // This means we're in a subsequent run after the fix
-
-            if (usdtBaselineValues !== null) {
-              // Calculate deltas from the baseline values
-              const baselineRawIn = BigInt(usdtBaselineValues.rawIn);
-              const baselineRawOut = BigInt(usdtBaselineValues.rawOut);
-              const baselineCorrectedIn = BigInt(usdtBaselineValues.correctedIn);
-              const baselineCorrectedOut = BigInt(usdtBaselineValues.correctedOut);
-
-              // Calculate changes since the baseline
-              const rawInDelta = currentRawIn - baselineRawIn;
-              const rawOutDelta = currentRawOut - baselineRawOut;
-
-              console.log(`USDT raw deltas since baseline - In: ${rawInDelta.toString()}, Out: ${rawOutDelta.toString()}`);
-
-              // Apply the deltas to the baseline corrected values
-              correctedBridgedIn = baselineCorrectedIn + rawInDelta;
-              correctedBridgedOut = baselineCorrectedOut + rawOutDelta;
-
-              // Update the baseline with current values
-              usdtBaselineValues = {
-                rawIn: currentRawIn.toString(),
-                rawOut: currentRawOut.toString(),
-                correctedIn: correctedBridgedIn.toString(),
-                correctedOut: correctedBridgedOut.toString(),
-                lastUpdate: Date.now()
-              };
-            } else {
-              // If we don't have baseline values but the problematic tx is gone,
-              // just use the current values
-              console.log('USDT no baseline values but problematic tx is gone, using current values');
-              correctedBridgedIn = currentRawIn;
-              correctedBridgedOut = currentRawOut;
-            }
-          }
-
-          console.log(`USDT corrected values - In: ${correctedBridgedIn.toString()}, Out: ${correctedBridgedOut.toString()}`);
-
-          // If the correction makes the value negative, set to 0
-          if (correctedBridgedOut < BigInt(0)) {
-            correctedBridgedOut = BigInt(0);
-          }
-
-          // Format the corrected amounts
-          const totalBridgedIn = formatTokenAmount(correctedBridgedIn.toString(), tokenInfo.decimals);
-          const totalBridgedOut = formatTokenAmount(correctedBridgedOut.toString(), tokenInfo.decimals);
-
-          // Calculate USD values
-          const tokenPrice = tokenPrices[tokenInfo.symbol] || 0;
-
-          // Parse the formatted amount correctly for USD calculation
-          const parsedBridgedIn = parseFloat(totalBridgedIn);
-          const parsedBridgedOut = parseFloat(totalBridgedOut);
-
-          const totalBridgedInUSD = parsedBridgedIn * tokenPrice;
-          const totalBridgedOutUSD = parsedBridgedOut * tokenPrice;
-
-          console.log(`Token: ${tokenInfo.symbol}, Price: $${tokenPrice}, Amount In: ${parsedBridgedIn}, USD In: $${totalBridgedInUSD.toFixed(2)}, Amount Out: ${parsedBridgedOut}, USD Out: $${totalBridgedOutUSD.toFixed(2)}`);
-
-          return {
-            ...token,
-            symbol: tokenInfo.symbol,
-            name: tokenInfo.name,
-            totalBridgedIn,
-            totalBridgedOut,
-            totalBridgedInUSD: totalBridgedInUSD.toFixed(2),
-            totalBridgedOutUSD: totalBridgedOutUSD.toFixed(2),
-            tokenPrice,
-            rawTotalBridgedIn: correctedBridgedIn.toString(),
-            rawTotalBridgedOut: correctedBridgedOut.toString()
-          };
-        }
 
         if (token.symbol === '???' || token.name.includes('Unknown')) {
           tokenInfo = getTokenInfo(token.id);
@@ -743,7 +532,7 @@ export const BridgeService = {
       const MAX_TRANSFER_SIZE = BigInt('1000000000000000000000');
 
       // Calculate adjusted volume from individual token transfers
-      processedTokens.forEach((token: any) => {
+      processedTokens.forEach((token) => {
         // Convert string to BigInt for calculations
         const tokenIn = BigInt(token.rawTotalBridgedIn || '0');
         const tokenOut = BigInt(token.rawTotalBridgedOut || '0');
@@ -773,7 +562,7 @@ export const BridgeService = {
 
       // Calculate total USD volume with proper precision
       let totalVolumeUSD = 0;
-      processedTokens.forEach((token: any) => {
+      processedTokens.forEach((token) => {
         // Make sure we're adding the correct USD values
         if (token.totalBridgedInUSD) {
           totalVolumeUSD += parseFloat(token.totalBridgedInUSD);
@@ -829,60 +618,16 @@ export const BridgeService = {
     }
   },
 
-  // TODO: Note to self: This dose not have all the pairs
-  // Get warp routes from the actual configuration
+  // Live warp routes out of KalyChain (config/chain.ts is the single source; keep the frontend list in sync)
   async getWarpRoutes() {
-    // Return actual warp routes based on the frontend configuration
-    return [
-      {
-        id: 'klc-routes',
-        sourceChain: 'kalychain',
-        destinationChain: 'arbitrum',
-        tokenAddress: '0x8A1ABbB167b149F2493C8141091028fD812Da6E4',
-        tokenSymbol: 'KLC',
-        status: 'active'
-      },
-      {
-        id: 'klc-bsc',
-        sourceChain: 'kalychain',
-        destinationChain: 'bsc',
-        tokenAddress: '0x8A1ABbB167b149F2493C8141091028fD812Da6E4',
-        tokenSymbol: 'KLC',
-        status: 'active'
-      },
-      {
-        id: 'klc-polygon',
-        sourceChain: 'kalychain',
-        destinationChain: 'polygon',
-        tokenAddress: '0x8A1ABbB167b149F2493C8141091028fD812Da6E4',
-        tokenSymbol: 'KLC',
-        status: 'active'
-      },
-      {
-        id: 'usdt-arbitrum',
-        sourceChain: 'kalychain',
-        destinationChain: 'arbitrum',
-        tokenAddress: '0x2CA775C77B922A51FcF3097F52bFFdbc0250D99A',
-        tokenSymbol: 'USDT',
-        status: 'active'
-      },
-      {
-        id: 'usdt-polygon',
-        sourceChain: 'kalychain',
-        destinationChain: 'polygon',
-        tokenAddress: '0x2CA775C77B922A51FcF3097F52bFFdbc0250D99A',
-        tokenSymbol: 'USDT',
-        status: 'active'
-      },
-      {
-        id: 'clisha-route',
-        sourceChain: 'clisha',
-        destinationChain: 'kalychain',
-        tokenAddress: '0x376E0ac0B55aA79F9B30aAc8842e5E84fF06360C',
-        tokenSymbol: 'CLISHA',
-        status: 'active'
-      }
-    ];
+    return KALYCHAIN_WARP_ROUTES.map(route => ({
+      id: route.id,
+      sourceChain: 'kalychain',
+      destinationChain: route.destinationChain,
+      tokenAddress: KALYCHAIN_TOKENS[route.token].address,
+      tokenSymbol: route.token,
+      status: 'active',
+    }));
   },
 
   // Method to get combined bridge data

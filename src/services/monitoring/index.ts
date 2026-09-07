@@ -9,7 +9,7 @@ const THRESHOLDS = {
 };
 
 // Supported chains
-const CHAINS: ChainType[] = ['kalychain', 'bnb', 'arbitrum', 'clisha'];
+const CHAINS: ChainType[] = ['kalychain', 'arbitrum', 'polygon'];
 
 export const MonitoringService = {
   async getRelayerHealth() {

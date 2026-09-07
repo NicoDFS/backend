@@ -10,124 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                      String                @id @default(uuid())
-  username                String                @unique
-  email                   String?               @unique
-  passwordHash            String
-  salt                    String
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
-  wallets                 Wallet[]
-  transactions            Transaction[]
-  apiKeys                 ApiKey[]
-  projects                Project[]
-  fairlaunches            FairlaunchProject[]
-  thirdwebWalletAddress   String?
-  walletMigrationStatus   WalletMigrationStatus @default(NOT_STARTED)
-  walletMigratedAt        DateTime?
-  walletMigrations        WalletMigration[]
-}
-
-enum WalletMigrationStatus {
-  NOT_STARTED
-  IN_PROGRESS
-  COMPLETED
-  OPTED_OUT
-}
-
-model WalletMigration {
-  id                    String    @id @default(uuid())
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id])
-  oldWalletAddress      String
-  newWalletAddress      String
-  oldWalletId           String
-  fundsTransferred      Boolean   @default(false)
-  tokensTransferred     Boolean   @default(false)
-  positionsTransferred  Boolean   @default(false)
-  completedAt           DateTime?
-  createdAt             DateTime  @default(now())
-
-  @@index([userId])
-}
-
-model Wallet {
-  id                 String    @id @default(uuid())
-  address            String    @unique
-  encryptedPrivateKey String
-  salt               String
-  iv                 String
-  chainId            Int
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  user               User      @relation(fields: [userId], references: [id])
-  userId             String
-  transactions       Transaction[]
-}
-
-model Transaction {
-  id            String    @id @default(uuid())
-  type          TransactionType
-  status        TransactionStatus
-  hash          String?   @unique
-  fromAddress   String
-  toAddress     String?
-  amount        String
-  tokenAddress  String?
-  tokenSymbol   String?
-  tokenDecimals Int?
-  fee           String?
-  blockNumber   Int?
-  timestamp     DateTime  @default(now())
-  user          User      @relation(fields: [userId], references: [id])
-  userId        String
-  wallet        Wallet    @relation(fields: [walletId], references: [id])
-  walletId      String
-}
-
-enum TransactionType {
-  SEND
-  RECEIVE
-  SWAP
-  STAKE
-  UNSTAKE
-  CLAIM_REWARD
-  PROVIDE_LIQUIDITY
-  REMOVE_LIQUIDITY
-}
-
-enum TransactionStatus {
-  PENDING
-  CONFIRMED
-  FAILED
-}
-
-model ApiKey {
-  id          String    @id @default(uuid())
-  name        String    // Friendly name for the API key
-  keyHash     String    @unique // Hashed version of the API key
-  prefix      String    // First 8 characters for identification
-  permissions String[]  // Array of permissions (e.g., ["read", "write", "admin"])
-  isActive    Boolean   @default(true)
-  lastUsedAt  DateTime?
-  expiresAt   DateTime? // Optional expiration date
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  user        User      @relation(fields: [userId], references: [id])
-  userId      String
-
-  @@index([keyHash])
-  @@index([userId])
-}
-
-enum ApiKeyPermission {
-  READ_PUBLIC    // Can read public DEX data, bridge data, etc.
-  READ_USER      // Can read user-specific data (requires user context)
-  WRITE_USER     // Can perform user operations (wallet creation, transactions)
-  ADMIN          // Full admin access
-}
-
 model Project {
   id                    String    @id @default(uuid())
 
@@ -158,7 +40,7 @@ model Project {
   lpRecipient           String?
 
   // DEX version for liquidity deployment
-  dexVersion            String    @default("v2")  // "v2" or "v3"
+  dexVersion            String    @default("v3")  // always "v3" on 3890 (no V2 router exists there)
 
   // Blockchain Data (required for save)
   contractAddress       String    @unique  // Deployed presale contract address
@@ -169,11 +51,11 @@ model Project {
   // Metadata
   createdAt             DateTime  @default(now())
 
-  // Relations
-  user                  User      @relation(fields: [userId], references: [id])
-  userId                String
+  // Deployer of the sale contract, proven from the tx receipt (lower-cased). This is
+  // the only ownership the launchpad has — there are no user accounts.
+  ownerAddress          String
 
-  @@index([userId])
+  @@index([ownerAddress])
   @@index([contractAddress])
   @@index([transactionHash])
 }
@@ -205,7 +87,7 @@ model FairlaunchProject {
   referrer              String?
 
   // DEX version for liquidity deployment
-  dexVersion            String    @default("v2")  // "v2" or "v3"
+  dexVersion            String    @default("v3")  // always "v3" on 3890 (no V2 router exists there)
 
   // Blockchain Data (required for save)
   contractAddress       String    @unique  // Deployed fairlaunch contract address
@@ -216,11 +98,11 @@ model FairlaunchProject {
   // Metadata
   createdAt             DateTime  @default(now())
 
-  // Relations
-  user                  User      @relation(fields: [userId], references: [id])
-  userId                String
+  // Deployer of the sale contract, proven from the tx receipt (lower-cased). This is
+  // the only ownership the launchpad has — there are no user accounts.
+  ownerAddress          String
 
-  @@index([userId])
+  @@index([ownerAddress])
   @@index([contractAddress])
   @@index([transactionHash])
 }

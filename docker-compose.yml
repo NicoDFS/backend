@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL database for user data and wallet storage
+  # PostgreSQL database for launchpad project metadata (Prisma)
   postgres:
     image: postgres:16-alpine
     container_name: kalyswap-postgres
@@ -14,18 +14,6 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - kalyswap_network
-
-  # Redis for caching and session management
-  redis:
-    image: redis:7-alpine
-    container_name: kalyswap-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
     networks:
       - kalyswap_network
 
@@ -49,4 +37,3 @@ networks:
 
 volumes:
   postgres_data:
-  redis_data:

@@ -28,15 +28,15 @@ export interface ProjectDeploymentData {
   presaleEnd: string;   // ISO string, will be converted to DateTime
   lpLockDuration: string;
   lpRecipient?: string;
-  dexVersion?: string; // "v2" or "v3", defaults to "v2"
+  dexVersion?: string; // "v3" — the only DEX on 3890; kept for schema compatibility
 
   // Required Blockchain Data
   contractAddress: string;
   transactionHash: string;
   blockNumber: number;
 
-  // User context
-  userId: string;
+  // Deployer of the sale contract, proven from the tx receipt (lower-cased)
+  ownerAddress: string;
 }
 
 export interface Project {
@@ -69,7 +69,7 @@ export interface Project {
   blockNumber: number;
   deployedAt: Date;
   createdAt: Date;
-  userId: string;
+  ownerAddress: string;
 }
 
 export const ProjectService = {
@@ -143,19 +143,14 @@ export const ProjectService = {
           presaleEnd,
           lpLockDuration: data.lpLockDuration,
           lpRecipient: data.lpRecipient || null,
-          dexVersion: data.dexVersion || 'v2',
+          dexVersion: data.dexVersion || 'v3',
 
           // Blockchain Data
           contractAddress: data.contractAddress,
           transactionHash: data.transactionHash,
           blockNumber: data.blockNumber,
           deployedAt,
-
-          // User relation
-          userId: data.userId
-        },
-        include: {
-          user: true
+          ownerAddress: data.ownerAddress
         }
       });
 
@@ -191,7 +186,7 @@ export const ProjectService = {
         blockNumber: project.blockNumber,
         deployedAt: project.deployedAt,
         createdAt: project.createdAt,
-        userId: project.userId
+        ownerAddress: project.ownerAddress
       };
     } catch (error) {
       console.error('❌ Error saving confirmed project:', error);
@@ -209,9 +204,6 @@ export const ProjectService = {
         skip: offset,
         orderBy: {
           createdAt: 'desc'
-        },
-        include: {
-          user: true
         }
       });
 
@@ -245,7 +237,7 @@ export const ProjectService = {
         blockNumber: project.blockNumber,
         deployedAt: project.deployedAt,
         createdAt: project.createdAt,
-        userId: project.userId
+        ownerAddress: project.ownerAddress
       }));
     } catch (error) {
       console.error('❌ Error fetching confirmed projects:', error);
@@ -259,10 +251,7 @@ export const ProjectService = {
   async getConfirmedProject(id: string): Promise<Project | null> {
     try {
       const project = await prisma.project.findUnique({
-        where: { id },
-        include: {
-          user: true
-        }
+        where: { id }
       });
 
       if (!project) {
@@ -299,7 +288,7 @@ export const ProjectService = {
         blockNumber: project.blockNumber,
         deployedAt: project.deployedAt,
         createdAt: project.createdAt,
-        userId: project.userId
+        ownerAddress: project.ownerAddress
       };
     } catch (error) {
       console.error('❌ Error fetching confirmed project:', error);
@@ -313,10 +302,7 @@ export const ProjectService = {
   async getConfirmedProjectByAddress(contractAddress: string): Promise<Project | null> {
     try {
       const project = await prisma.project.findFirst({
-        where: { contractAddress },
-        include: {
-          user: true
-        }
+        where: { contractAddress }
       });
 
       if (!project) {
@@ -353,7 +339,7 @@ export const ProjectService = {
         blockNumber: project.blockNumber,
         deployedAt: project.deployedAt,
         createdAt: project.createdAt,
-        userId: project.userId
+        ownerAddress: project.ownerAddress
       };
     } catch (error) {
       console.error('❌ Error fetching confirmed project by address:', error);
@@ -362,19 +348,16 @@ export const ProjectService = {
   },
 
   /**
-   * Get confirmed projects for a specific user
+   * Get confirmed projects deployed by a specific address
    */
-  async getUserConfirmedProjects(userId: string, limit: number = 10, offset: number = 0): Promise<Project[]> {
+  async getProjectsByOwner(ownerAddress: string, limit: number = 10, offset: number = 0): Promise<Project[]> {
     try {
       const projects = await prisma.project.findMany({
-        where: { userId },
+        where: { ownerAddress: ownerAddress.toLowerCase() },
         take: limit,
         skip: offset,
         orderBy: {
           createdAt: 'desc'
-        },
-        include: {
-          user: true
         }
       });
 
@@ -408,7 +391,7 @@ export const ProjectService = {
         blockNumber: project.blockNumber,
         deployedAt: project.deployedAt,
         createdAt: project.createdAt,
-        userId: project.userId
+        ownerAddress: project.ownerAddress
       }));
     } catch (error) {
       console.error('❌ Error fetching user confirmed projects:', error);

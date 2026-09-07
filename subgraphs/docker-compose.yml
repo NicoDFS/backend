@@ -19,12 +19,11 @@ services:
       postgres_pass: let-me-in
       postgres_db: graph-node
       ipfs: 'ipfs:5001'
-      # Primary RPC endpoint (switched from rpc3 which was stuck at block 39,718,483)
-      ethereum: 'kalychain:https://rpc.kalychain.io/rpc'
-      # For RPC failover (once rpc3 is fixed), use: 'kalychain:https://rpc.kalychain.io/rpc,https://rpc3.kalychain.io/rpc'
+      # KalyChain 3890 — chain name "kmt" must match every subgraph.yaml `network:` (hostname says testnet until DNS cuts over)
+      ethereum: 'kmt:https://mainrpc.kalychain.io/rpc'
       GRAPH_LOG: info
       GRAPH_ALLOW_NON_DETERMINISTIC_IPFS: 'true'
-      GRAPH_ETHEREUM_GENESIS_BLOCK_NUMBER: '6880000'
+      GRAPH_ETHEREUM_GENESIS_BLOCK_NUMBER: '0'
       GRAPH_NODE_CONFIG: '/etc/graph-node/config.toml'
 
   ipfs:

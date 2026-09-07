@@ -75,8 +75,8 @@ export function getTimestampFromEvent(event: ethereum.Event): BigInt {
 
 export function getDomainFromChainId(chainId: BigInt): BigInt {
   // This is a simplified mapping - you may need to adjust based on your actual domain IDs
-  if (chainId.equals(BigInt.fromI32(3888))) {
-    return BigInt.fromI32(3888); // KalyChain
+  if (chainId.equals(BigInt.fromI32(3890))) {
+    return BigInt.fromI32(3890); // KalyChain
   } else if (chainId.equals(BigInt.fromI32(56))) {
     return BigInt.fromI32(56); // BSC
   } else if (chainId.equals(BigInt.fromI32(1))) {
@@ -85,8 +85,6 @@ export function getDomainFromChainId(chainId: BigInt): BigInt {
     return BigInt.fromI32(137); // Polygon
   } else if (chainId.equals(BigInt.fromI32(42161))) {
     return BigInt.fromI32(42161); // Arbitrum
-  } else if (chainId.equals(BigInt.fromI32(3890))) {
-    return BigInt.fromI32(3890); // Clisha
   }
   
   return chainId; // Default to chainId if no mapping exists

@@ -17,7 +17,7 @@ Before starting, ensure you have the following installed:
 
 1. Clone repository and install dependencies
 2. Set up environment variables (including Thirdweb keys)
-3. Start database and Redis services
+3. Start the database
 4. Set up and run Prisma database
 5. Start Graph Node for subgraphs
 6. Deploy subgraphs — V2 (⚠️ **2-day sync**) and V3
@@ -45,17 +45,8 @@ Create a `.env.local` file in the backend directory:
 DATABASE_URL="postgresql://kalyswap:kalyswap_password@localhost:5433/kalyswap_db"
 
 # Blockchain Configuration
-KALYCHAIN_RPC_URL="https://rpc.kalychain.io/rpc"
+KALYCHAIN_RPC_URL="https://testnetrpc.kalychain.io/rpc"   # KalyChain 3890 (hostname says testnet until DNS cut-over)
 
-# Multichain RPC (Arbitrum / BSC) — paid thirdweb RPC, authenticated server-side
-# with the thirdweb SECRET key (x-secret-key header). NowNodes is NOT used here.
-# Leave ARBITRUM_RPC_URL / BSC_RPC_URL unset to use thirdweb; set them only to
-# force a specific endpoint. If the thirdweb vars below are unset, the service
-# falls back to public RPC.
-THIRDWEB_CLIENT_ID="f4ce05ebc56f222fd4d5f23f9bb1587e"
-THIRDWEB_SECRET_KEY="<get from team — server-side only, no NEXT_PUBLIC prefix>"
-# ARBITRUM_RPC_URL=""
-# BSC_RPC_URL=""
 
 # Graph Node Configuration
 GRAPH_NODE_URL="http://localhost:8000"
@@ -63,13 +54,6 @@ GRAPH_NODE_URL="http://localhost:8000"
 # API Configuration
 NEXT_PUBLIC_API_URL="http://localhost:3000/api"
 
-# JWT Secret (generate a secure random string)
-JWT_SECRET="your-super-secure-jwt-secret-here"
-JWT_EXPIRES_IN="7d"
-
-# Thirdweb Configuration (required for wallet auth)
-NEXT_PUBLIC_THIRDWEB_CLIENT_ID="f4ce05ebc56f222fd4d5f23f9bb1587e"
-NEXT_PUBLIC_THIRDWEB_SECRET_KEY="<get from team>"
 
 # V3 Subgraph (set after deploying V3 subgraph locally)
 NEXT_PUBLIC_V3_MAINNET_SUBGRAPH_URL="http://127.0.0.1:8000/subgraphs/name/v3-subgraph-kalychain"
@@ -81,10 +65,10 @@ SMTP_USER="alerts@example.com"
 SMTP_PASS="password"
 ```
 
-### 3. Start Database and Redis Services
+### 3. Start the Database
 
 ```bash
-# Start PostgreSQL and Redis containers
+# Start the PostgreSQL container
 docker-compose up -d
 
 # Verify services are running
@@ -255,7 +239,6 @@ curl -X POST http://localhost:8000/subgraphs/name/kalyswap/farming-subgraph \
 ### Port Usage
 - **Backend**: 3000
 - **PostgreSQL (Backend)**: 5433
-- **Redis**: 6379
 - **Graph Node**: 8000, 8001, 8020, 8030, 8040
 - **PostgreSQL (Graph Node)**: 5432
 - **IPFS**: 5001

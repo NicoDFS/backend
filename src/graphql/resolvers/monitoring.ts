@@ -3,7 +3,7 @@ import { ChainType } from '../../services/monitoring/prometheus';
 
 // Helper function to validate chain parameter
 function validateChain(chain: string): ChainType {
-  const validChains: ChainType[] = ['kalychain', 'bnb', 'arbitrum', 'clisha'];
+  const validChains: ChainType[] = ['kalychain', 'arbitrum', 'polygon'];
   if (!validChains.includes(chain as ChainType)) {
     throw new Error(`Invalid chain: ${chain}. Valid chains are: ${validChains.join(', ')}`);
   }
@@ -12,61 +12,58 @@ function validateChain(chain: string): ChainType {
 
 export const monitoringResolvers = {
   Query: {
-    relayerHealth: async (_: any, __: any, { monitoringService }: Context) => {
+    relayerHealth: async (_: unknown, __: unknown, { monitoringService }: Context) => {
       return monitoringService.getRelayerHealth();
     },
 
-    validatorHealth: async (_: any, { chain }: { chain: string }, { monitoringService }: Context) => {
+    validatorHealth: async (_: unknown, { chain }: { chain: string }, { monitoringService }: Context) => {
       return monitoringService.getValidatorHealth(validateChain(chain));
     },
 
-    validatorsHealth: async (_: any, __: any, { monitoringService }: Context) => {
+    validatorsHealth: async (_: unknown, __: unknown, { monitoringService }: Context) => {
       const health = await monitoringService.getAllValidatorsHealth();
       return {
         kalychain: { health: health.kalychain, resources: {}, metrics: {} },
-        bnb: { health: health.bnb, resources: {}, metrics: {} },
         arbitrum: { health: health.arbitrum, resources: {}, metrics: {} },
-        clisha: { health: health.clisha, resources: {}, metrics: {} }
+        polygon: { health: health.polygon, resources: {}, metrics: {} }
       };
     },
 
-    relayerResourceUsage: async (_: any, __: any, { monitoringService }: Context) => {
+    relayerResourceUsage: async (_: unknown, __: unknown, { monitoringService }: Context) => {
       return monitoringService.getRelayerResourceUsage();
     },
 
-    validatorResourceUsage: async (_: any, { chain }: { chain: string }, { monitoringService }: Context) => {
+    validatorResourceUsage: async (_: unknown, { chain }: { chain: string }, { monitoringService }: Context) => {
       return monitoringService.getValidatorResourceUsage(validateChain(chain));
     },
 
-    validatorsResourceUsage: async (_: any, __: any, { monitoringService }: Context) => {
+    validatorsResourceUsage: async (_: unknown, __: unknown, { monitoringService }: Context) => {
       const resources = await monitoringService.getAllValidatorsResourceUsage();
       return {
         kalychain: { health: {}, resources: resources.kalychain, metrics: {} },
-        bnb: { health: {}, resources: resources.bnb, metrics: {} },
         arbitrum: { health: {}, resources: resources.arbitrum, metrics: {} },
-        clisha: { health: {}, resources: resources.clisha, metrics: {} }
+        polygon: { health: {}, resources: resources.polygon, metrics: {} }
       };
     },
 
-    relayerMetrics: async (_: any, __: any, { monitoringService }: Context) => {
+    relayerMetrics: async (_: unknown, __: unknown, { monitoringService }: Context) => {
       return monitoringService.getRelayerMessageMetrics();
     },
 
-    validatorMetrics: async (_: any, { chain }: { chain: string }, { monitoringService }: Context) => {
+    validatorMetrics: async (_: unknown, { chain }: { chain: string }, { monitoringService }: Context) => {
       return monitoringService.getValidatorMessageMetrics(validateChain(chain));
     },
 
-    validatorsMetrics: async (_: any, __: any, { monitoringService }: Context) => {
+    validatorsMetrics: async (_: unknown, __: unknown, { monitoringService }: Context) => {
       const metrics = await monitoringService.getAllValidatorsMessageMetrics();
       return {
         kalychain: { health: {}, resources: {}, metrics: metrics.kalychain },
-        bnb: { health: {}, resources: {}, metrics: metrics.bnb },
         arbitrum: { health: {}, resources: {}, metrics: metrics.arbitrum },
-        clisha: { health: {}, resources: {}, metrics: metrics.clisha }
+        polygon: { health: {}, resources: {}, metrics: metrics.polygon }
       };
     },
 
-    fullMonitoringData: async (_: any, __: any, { monitoringService }: Context) => {
+    fullMonitoringData: async (_: unknown, __: unknown, { monitoringService }: Context) => {
       return monitoringService.getFullMonitoringData();
     }
   }

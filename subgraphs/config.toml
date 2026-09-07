@@ -6,10 +6,10 @@ pool_size = 10
 [chains]
 ingestor = "default"
 
-[chains.kalychain]
+[chains.kmt]
 shard = "primary"
 provider = [
-  { label = "kalychain-rpc-0", url = "https://rpc.kalychain.io/rpc", features = ["archive"] }
+  { label = "kmt-rpc-0", url = "https://mainrpc.kalychain.io/rpc", features = ["archive", "traces"] }
 ]
 
 [deployment]

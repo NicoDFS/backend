@@ -1,18 +1,25 @@
 import axios from 'axios';
 
 // Define supported chains
-export type ChainType = 'kalychain' | 'bnb' | 'arbitrum' | 'clisha';
+export type ChainType = 'kalychain' | 'arbitrum' | 'polygon';
 
 // Get Prometheus endpoints from environment variables
 const PROMETHEUS_ENDPOINTS = {
   relayer: process.env.RELAYER_PROMETHEUS_URL || 'http://localhost:9090',
   validators: {
     kalychain: process.env.VALIDATOR_KALYCHAIN_PROMETHEUS_URL || 'http://localhost:9091',
-    bnb: process.env.VALIDATOR_BNB_PROMETHEUS_URL || 'http://localhost:9092',
     arbitrum: process.env.VALIDATOR_ARBITRUM_PROMETHEUS_URL || 'http://localhost:9093',
-    clisha: process.env.VALIDATOR_CLISHA_PROMETHEUS_URL || 'http://localhost:9095'
+    polygon: process.env.VALIDATOR_POLYGON_PROMETHEUS_URL || 'http://localhost:9094'
   }
 };
+
+const VALIDATOR_CHAINS: ChainType[] = ['kalychain', 'arbitrum', 'polygon'];
+
+/** Run `fn` for every validator chain in parallel and key the results by chain. */
+async function forAllValidators<T>(fn: (chain: ChainType) => Promise<T>): Promise<Record<ChainType, T>> {
+  const entries = await Promise.all(VALIDATOR_CHAINS.map(async (chain) => [chain, await fn(chain)] as const));
+  return Object.fromEntries(entries) as Record<ChainType, T>;
+}
 
 export const PrometheusService = {
   async getRelayerMetrics() {
@@ -51,17 +58,7 @@ export const PrometheusService = {
   },
 
   async getAllValidatorsMetrics() {
-    const results: Record<ChainType, any> = {} as Record<ChainType, any>;
-
-    // Get metrics for each validator in parallel
-    const chains: ChainType[] = ['kalychain', 'bnb', 'arbitrum', 'clisha'];
-    await Promise.all(
-      chains.map(async (chain) => {
-        results[chain] = await this.getValidatorMetrics(chain);
-      })
-    );
-
-    return results;
+    return forAllValidators((chain) => this.getValidatorMetrics(chain));
   },
 
   async getNodeHealth(nodeType: 'relayer' | ChainType, isValidator = false) {
@@ -103,17 +100,7 @@ export const PrometheusService = {
   },
 
   async getAllValidatorsHealth() {
-    const results: Record<ChainType, any> = {} as Record<ChainType, any>;
-
-    // Get health for each validator in parallel
-    const chains: ChainType[] = ['kalychain', 'bnb', 'arbitrum', 'clisha'];
-    await Promise.all(
-      chains.map(async (chain) => {
-        results[chain] = await this.getNodeHealth(chain, true);
-      })
-    );
-
-    return results;
+    return forAllValidators((chain) => this.getNodeHealth(chain, true));
   },
 
   async getNodeResourceUsage(nodeType: 'relayer' | ChainType, isValidator = false) {
@@ -169,17 +156,7 @@ export const PrometheusService = {
   },
 
   async getAllValidatorsResourceUsage() {
-    const results: Record<ChainType, any> = {} as Record<ChainType, any>;
-
-    // Get resource usage for each validator in parallel
-    const chains: ChainType[] = ['kalychain', 'bnb', 'arbitrum', 'clisha'];
-    await Promise.all(
-      chains.map(async (chain) => {
-        results[chain] = await this.getNodeResourceUsage(chain, true);
-      })
-    );
-
-    return results;
+    return forAllValidators((chain) => this.getNodeResourceUsage(chain, true));
   },
 
   async getMessageProcessingMetrics(nodeType: 'relayer' | ChainType, isValidator = false) {
@@ -223,16 +200,6 @@ export const PrometheusService = {
   },
 
   async getAllValidatorsMessageMetrics() {
-    const results: Record<ChainType, any> = {} as Record<ChainType, any>;
-
-    // Get message metrics for each validator in parallel
-    const chains: ChainType[] = ['kalychain', 'bnb', 'arbitrum', 'clisha'];
-    await Promise.all(
-      chains.map(async (chain) => {
-        results[chain] = await this.getMessageProcessingMetrics(chain, true);
-      })
-    );
-
-    return results;
+    return forAllValidators((chain) => this.getMessageProcessingMetrics(chain, true));
   }
 };

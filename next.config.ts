@@ -3,11 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   eslint: {
     // Allow production builds to complete even if there are ESLint errors
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
     // Allow production builds to complete even if there are TypeScript errors
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   productionBrowserSourceMaps: false,
   experimental: {

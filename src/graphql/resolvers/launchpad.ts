@@ -4,13 +4,13 @@ import { FairlaunchService } from '../../services/fairlaunch';
 
 export const launchpadResolvers = {
   Query: {
-    launchpadProjects: async (_: any, __: any, { launchpadService }: Context) => {
+    launchpadProjects: async (_: unknown, __: unknown, { launchpadService }: Context) => {
       return launchpadService.getLaunchpadProjects();
     },
-    launchpadProject: async (_: any, { id }: { id: string }, { launchpadService }: Context) => {
+    launchpadProject: async (_: unknown, { id }: { id: string }, { launchpadService }: Context) => {
       return launchpadService.getLaunchpadProject(id);
     },
-    launchpadOverview: async (_: any, __: any, { launchpadService }: Context) => {
+    launchpadOverview: async (_: unknown, __: unknown, { launchpadService }: Context) => {
       return launchpadService.getLaunchpadOverview();
     },
 
@@ -18,9 +18,8 @@ export const launchpadResolvers = {
      * Unified project lookup - searches both presales and fairlaunches by contract address
      */
     projectByAddress: async (
-      _: any,
-      { contractAddress }: { contractAddress: string },
-      context: Context
+      _: unknown,
+      { contractAddress }: { contractAddress: string }
     ) => {
       try {
         // First try to find in presales
@@ -34,7 +33,7 @@ export const launchpadResolvers = {
             startTime: presale.presaleStart,
             endTime: presale.presaleEnd,
             status: 'Active', // This would need to be calculated based on current time
-            creator: presale.userId,
+            creator: presale.ownerAddress,
             saleToken: {
               id: presale.saleToken,
               name: presale.name,
@@ -58,7 +57,7 @@ export const launchpadResolvers = {
             startTime: fairlaunch.fairlaunchStart,
             endTime: fairlaunch.fairlaunchEnd,
             status: 'Active', // This would need to be calculated based on current time
-            creator: fairlaunch.userId,
+            creator: fairlaunch.ownerAddress,
             saleToken: {
               id: fairlaunch.saleToken,
               name: fairlaunch.name,
